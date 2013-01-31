@@ -4,3 +4,23 @@
 *.jar
 *.war
 *.ear
+*.svn
+
+# ai stuff #
+bin/
+build/
+config/astar/beacon-clientinit.xml
+config/astar/donothing-clientinit.xml
+config/astar/heuristic-clientinit.xml
+config/astar/ladder.html
+config/astar/random-clientinit.xml
+config/astar/SelfLadderConfig.xml
+config/astar/SpacewarConfigSelfLadder.xml
+dist/
+docs/
+lib/
+src/spacewar2/
+test/
+*.classpath
+*.project
+build.xml
