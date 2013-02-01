@@ -55,11 +55,49 @@ public class UltraClient extends TeamClient {
 			if (current == null || current.isMovementFinished()) {
 
 				
+				// Test out the graph
+				AdjacencyListGraph<String> strings = new AdjacencyListGraph<String>();
+				String a = new String("A");
+				String b = new String("B");
+				String c = new String("C"); 
+				strings.addNode(a);
+				strings.addNode(b);
+				strings.addNode(c);
+
+				strings.addPath(a, b, 3.14159);
+				strings.addPath(b, a, 12358);
+				strings.addPath(a, c, 2.71828);
+				
+				try{
+					System.out.println(strings.getNode(a).getPaths());
+				}catch(Exception e){
+					System.out.println("no such node");
+				}
+				try{
+					double cost = strings.getPathCost(b,a);
+					System.out.println(cost);
+				}catch(Exception e){
+					System.out.println("no path from these nodes");
+				}
+				
+				System.exit(0);
 				Position currentPosition = ship.getPosition();
 
-				// Just go diagonally
+				// Find a position to move towards.
+				//--------------------------------
+				
+				// "discretize" the map into 400 elements
+				// For now, imagine the ships approximation to one of these points as "state"
+				
+				// Store them all in a tree(or a graph?)
+				
+				// How to rank themm?
+				// First, define the goal as any asteroid worth money
+				
 				Position newGoal = new Position(currentPosition.getX() + 200, currentPosition.getY() +200);
-
+				//------------------------
+				// End position finding
+				
 				// All boilerplate ?
 				MoveAction newAction = null;
 				newAction = new MoveAction(space, currentPosition, newGoal);
