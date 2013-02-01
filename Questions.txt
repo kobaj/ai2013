@@ -1,0 +1,8 @@
+Q. Do we both have to submit or just one person on the team?
+A. You only need to submit one project per group.  So, your group should pick someone to be responsible for the submissions.
+
+Q. Can we switch which ladder we compete in for a project?
+A. You should pick a single ladder for a given project, but you can switch from project to project.
+
+Q. Whats the resubmit process for changed or updated code?
+A. Yes you do the same process to resubmit a project as you did for the initial submission.
