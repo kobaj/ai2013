@@ -6,3 +6,6 @@ A. You should pick a single ladder for a given project, but you can switch from 
 
 Q. Whats the resubmit process for changed or updated code?
 A. Yes you do the same process to resubmit a project as you did for the initial submission.
+
+Q. If one team member finds a bug or exploit, do the points apply to the team or the individual?
+A. 
