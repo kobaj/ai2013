@@ -35,7 +35,7 @@ class Node<T>
 	{
 		if(parent == null)
 		{
-			 System.out.println("this is parent.");
+			 // System.out.println("this is parent.");
 			 ArrayList<Node<T>> root =  new ArrayList<Node<T>>();
 			 root.add(this);
 			 return root;
