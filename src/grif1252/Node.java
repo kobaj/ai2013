@@ -34,8 +34,14 @@ class Node<T>
 	public ArrayList<Node<T>> getPathToRoot()
 	{
 		if(parent == null)
-			return new ArrayList<Node<T>>();
+		{
+			 System.out.println("parent");
+			 ArrayList<Node<T>> root =  new ArrayList<Node<T>>();
+			 root.add(this);
+			 return root;
+		}
 		
+		System.out.println("this: " + String.valueOf(this.matrix_id) + " parent: " + parent.matrix_id);
 		ArrayList<Node<T>> current_path = parent.getPathToRoot();
 		current_path.add(this);
 		return current_path;

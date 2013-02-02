@@ -71,11 +71,12 @@ public class Project1Client extends TeamClient
 			AdjacencyMatrixGraph<Position> temp = calculateConnections(local_space, min_radius, calculateNodesRandom(local_space, min_radius, ships.get(0), random));
 			
 			// find the fastest way through it.
-			ArrayList<Node<Position>> test = AStar(space, temp, temp.getNodes().get(0));
+			ArrayList<Node<Position>> test = AStar(space, temp, temp.getNodes().get(1));
 			
 			// uncomment to draw lines
 			//drawLines(space, temp, min_radius);
-			drawSolution(space, test);
+			if(test != null)
+				drawSolution(space, test);
 			
 			once = true;
 		}
@@ -180,24 +181,34 @@ public class Project1Client extends TeamClient
 		//have to stick the graph into a tree starting from start
 		
 		ArrayList<Node<Position>> closed_visited = new ArrayList<Node<Position>>();
+		closed_visited.add(start);
 		PriorityQueue<Node<Position>> fringe = new PriorityQueue<Node<Position>>(10, new NodeComparator());
 
+		System.out.println("starting at: " + start.matrix_id);
+		
 		ArrayList<Node<Position>> children = graph.getChildren(start);
 		for(Node<Position> child: children)
 		{
 			child.root_to_n_distance = space.findShortestDistance(start.position, child.position);
 			fringe.add(child);
+			System.out.println("child: " + child.matrix_id);
 		}
+		
 		
 		while(true)
 		{
+			System.out.println("doing a loop");
+			
 			if(fringe.isEmpty())
 				return null;
 			
 			Node<Position> next = fringe.poll();
+			
+			System.out.println("next is at: " + next.matrix_id + "(f,g,h): (" + (int)next.fn() + "," + (int)next.root_to_n_distance + "," + (int)next.hueristic_distance + ") parent is: " + next.parent.matrix_id);
+			
 			if(next.node_type == NodeType.goal)
 			{
-			
+				System.out.println("found the goal: " + next.matrix_id);
 				return next.getPathToRoot();
 			}
 			else
@@ -207,30 +218,42 @@ public class Project1Client extends TeamClient
 				for(Node<Position> child: sub_children)
 				{
 					child.root_to_n_distance = next.root_to_n_distance + space.findShortestDistance(child.position, next.position);
+				
+					System.out.println("child: " + child.matrix_id);
 					
 					boolean inserted = false;
 					
+					//or visited
+					for(Node<Position> p: closed_visited)
+					{
+						if(p.matrix_id == child.matrix_id)
+						{
+							System.out.println("already visited : " + child.matrix_id);
+							inserted = true;
+							break;
+						}
+					}
+					
 					//already there
+					if (!inserted)
 					for(Node<Position> p: fringe)
 					{
 						if(p.matrix_id == child.matrix_id)
 						{
+							System.out.println("already fringed : " + child.matrix_id);
+							
 							if(p.fn() > child.fn())
 							{
 								p.root_to_n_distance = child.root_to_n_distance;
 								p.parent = next;
 								next.child = p;
 							
+								System.out.println("this child is better : " + child.matrix_id);
+								
 							}
 							inserted = true;
 							break;
 						}
-					}
-					
-					for(Node<Position> p: closed_visited)
-					{
-						if(p.matrix_id == child.matrix_id)
-							inserted = true;
 					}
 					
 					//add to fringe
@@ -250,7 +273,7 @@ public class Project1Client extends TeamClient
 		Position goal = addStartAndGoal(space, ship, nodes);
 		
 		int i = 2;
-		for (; i < 40; i++)
+		for (; i < 6; i++)
 		{
 			Position open = space.getRandomFreeLocation(random, (int) min_distance);
 			nodes.add(new Node<Position>(open, i, NodeType.regular, space.findShortestDistance(open, goal) / 2.0));
@@ -298,18 +321,15 @@ public class Project1Client extends TeamClient
 		
 		// add one more node for source (the ship) and another for destination (shoot for the max asteroid at the moment)
 		Asteroid goal = getMaxAsteroid(space);
-		if (goal != null)
-		{
-			Node<Position> goal_node = new Node<Position>(goal.getPosition(), i, NodeType.goal, 0);
-			goal_node.item = goal;
-			nodes.add(goal_node);
-			i++;
-			
-			space.removeObject(goal);
-		}
-		else
+		if (goal == null)
 			goal = new Asteroid(new Position(0, 0), false, 1, false);
 		
+		Node<Position> goal_node = new Node<Position>(goal.getPosition(), i, NodeType.goal, 0);
+		goal_node.item = goal;
+		nodes.add(goal_node);
+		i++;
+		
+		//next
 		Node<Position> start_node = new Node<Position>(ship.getPosition(), i, NodeType.start, space.findShortestDistance(ship.getPosition(), goal.getPosition()) / 2.0);
 		start_node.item = ship;
 		nodes.add(start_node);
@@ -317,6 +337,7 @@ public class Project1Client extends TeamClient
 		
 		// remove from space
 		space.removeObject(ship);
+		space.removeObject(goal);
 		
 		return goal.getPosition();
 	}
@@ -342,7 +363,7 @@ public class Project1Client extends TeamClient
 		ArrayList<Node<Position>> visited_nodes = new ArrayList<Node<Position>>();
 		
 		// now we have our nodes, lets see which ones touch
-		AdjacencyMatrixGraph<Position> my_graph = new AdjacencyMatrixGraph<Position>(nodes.size());
+		AdjacencyMatrixGraph<Position> my_graph = new AdjacencyMatrixGraph<Position>(nodes.size() + 1);
 		my_graph.storeNodes(nodes);
 		
 		// walk through the nodes and find out which ones can touch
