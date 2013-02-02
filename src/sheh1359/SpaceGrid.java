@@ -38,6 +38,48 @@ public class SpaceGrid{
 		return blocks ;
 	}
 	
+	public int getBlockSize(){
+		return blockSize;
+	}
+	
+	public SpaceBlock getBlock(Position p) throws Exception{
+		for(ArrayList<SpaceBlock> row : blocks){
+			for(SpaceBlock b : row){
+				if(b.contains(p)){
+					return b;
+				}
+			}
+		}
+		throw new Exception();
+	}
+	
+	public ArrayList<SpaceBlock> getAdjacentTo(SpaceBlock b){
+
+		ArrayList<SpaceBlock> result = new ArrayList<SpaceBlock>();
+		
+		for(int i=0;i<blocks.size();i++){
+			for(int j=0;j<blocks.get(0).size();j++){
+				if(blocks.get(i).get(j) == b){
+					// this is the block. get up to 8 blocks surrounding it
+					try{result.add(blocks.get(i-1).get(j-1));}catch(Exception e){}
+					try{result.add(blocks.get(i-1).get(j));}catch(Exception e){}
+					try{result.add(blocks.get(i-1).get(j+1));}catch(Exception e){}
+					
+					
+					try{result.add(blocks.get(i).get(j-1));}catch(Exception e){}
+					try{result.add(blocks.get(i).get(j+1));}catch(Exception e){}
+
+					
+					try{result.add(blocks.get(i+1).get(j-1));}catch(Exception e){}
+					try{result.add(blocks.get(i+1).get(j));}catch(Exception e){}
+					try{result.add(blocks.get(i+1).get(j+1));}catch(Exception e){}
+
+				}
+			}
+		}
+		return result;
+	}
+	
 }
 
 
@@ -64,8 +106,20 @@ class SpaceBlock{
 		return space.isLocationFree(p, radius);
 	}
 	
+	public boolean contains(Position p){
+		boolean xConstraint = Math.abs(position.getX() - p.getX()) <= (size /2);
+		boolean yConstraint = Math.abs(position.getY() - p.getY()) <= (size /2);
+		if(xConstraint && yConstraint){
+			return true;
+		}else{
+			return false;
+		}
+
+	}
+	
 	public Position getPosition(){
 		return position ;
 	}
+	
 	
 }

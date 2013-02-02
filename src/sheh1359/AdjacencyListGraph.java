@@ -41,12 +41,14 @@ public class AdjacencyListGraph<T>{
 	}
 	
 	public double getPathCost(T source, T dest) throws Exception{
-		try{
+		
 			Node<T> sourceNode = getNode(source);
 			return sourceNode.getPathCost(dest);
-		}catch(Exception e){
-			throw new Exception();
-		}
+		
+	}
+	
+	public ArrayList<Node<T>> getNodes(){
+		return nodes;
 	}
 	
 }

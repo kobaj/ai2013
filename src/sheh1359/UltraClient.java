@@ -54,7 +54,7 @@ public class UltraClient extends TeamClient {
 			// We are not currently carrying out an action, make a new one
 			if (current == null || current.isMovementFinished()) {
 
-				SpaceGrid s = new SpaceGrid(space);
+				/*SpaceGrid s = new SpaceGrid(space);
 				for(ArrayList<SpaceBlock> l : s.getBlocks()){
 					for(SpaceBlock b : l){
 						if(b.isClear()){
@@ -62,6 +62,19 @@ public class UltraClient extends TeamClient {
 							newShadows.add(shadow);
 						}
 					}
+				}*/
+				
+				try{
+					SpaceGrid s = new SpaceGrid(space);
+					AStarLocation a = new AStarLocation(ship,s,new Position(100,100));
+					ArrayList<SpaceBlock> aPaths = a.getPaths();
+					for(SpaceBlock b : aPaths){
+							Shadow shadow = new CircleShadow(3, getTeamColor(), b.getPosition());
+							newShadows.add(shadow);
+						
+					}
+				}catch(Exception e){
+					System.out.println(e.getStackTrace().toString());
 				}
 
 				Position currentPosition = ship.getPosition();
