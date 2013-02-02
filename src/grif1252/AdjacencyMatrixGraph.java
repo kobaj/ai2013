@@ -30,12 +30,15 @@ public class AdjacencyMatrixGraph<T>
 		// make a handy dandy copy of the nodes
 		this.nodes = new ArrayList<Node<T>>();
 		for (Node<T> n : nodes)
-			this.nodes.add(new Node<T>(n.position, n.matrix_id, n.node_type, n.hueristic_distance));
+			this.nodes.add(n.copy());
 	}
 	
 	public ArrayList<Node<T>> getNodes()
 	{
-		return nodes;
+		ArrayList<Node<T>> all_nodes = new ArrayList<Node<T>>();
+		for(Node<T> n: nodes)
+			all_nodes.add(n.copy());
+		return all_nodes;
 	}
 	
 	public void setConnected(Node<T> A, Node<T> B, double distance)
@@ -64,12 +67,12 @@ public class AdjacencyMatrixGraph<T>
 		ArrayList<Node<T>> children = new ArrayList<Node<T>>();
 		
 		for (Node<T> n : nodes)
-			if (!parent.equals(n))
+			if (parent.matrix_id != n.matrix_id)
 			{
 				if (getConnected(parent, n))
 				{
+					n = n.copy();
 					n.parent = parent;
-					parent.child = n;
 					children.add(n);
 				}
 			}
