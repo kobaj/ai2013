@@ -30,7 +30,7 @@
 		     to the configuration file for that team.  Also, teams have initial bounding boxes
 		     which bound where the ships and the base will be created. -->
 		<HighLevelTeamConfig>
-			<teamName>Grif1252RandomTeam</teamName>
+			<teamName>TomandJakob</teamName>
 			<configFile>spacewarinit.xml</configFile>
 			<initialRegionCenterX>512</initialRegionCenterX>
 			<initialRegionCenterY>384</initialRegionCenterY>
@@ -62,7 +62,7 @@
 	<!-- Each team needs a base.  Optionally, you can initialize the location of the base -->
 	<bases>
 	    <BaseConfig>
-			<teamName>Grif1252RandomTeam</teamName>
+			<teamName>TomandJakob</teamName>
 		</BaseConfig>
 		<BaseConfig>
 			<teamName>RandomTeam</teamName>
@@ -81,13 +81,13 @@
 		<probabilityMineable>0.25</probabilityMineable>
 		
 		<!-- The number of asteroids when the game starts -->
-		<numberInitialAsteroids>30</numberInitialAsteroids>
+		<numberInitialAsteroids>6</numberInitialAsteroids>
 		
 		<!-- The maximum number of asteroids in a game -->
-		<maximumNumberAsterids>30</maximumNumberAsterids>
+		<maximumNumberAsterids>6</maximumNumberAsterids>
 
 		<!-- The probability an asteroid is movable -->
-		<probabilityMoveable>0.1</probabilityMoveable>
+		<probabilityMoveable>0.0</probabilityMoveable>
 		
 		<!-- The maximum initial velocity of a moveable asteroid -->
 		<maxInitialVelocity>15</maxInitialVelocity>
