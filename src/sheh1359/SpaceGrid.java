@@ -50,14 +50,18 @@ class SpaceBlock{
 	public SpaceBlock(Toroidal2DPhysics space, Position position, int size){
 		this.position = position ;
 		this.size = size ;
+		this.space = space ;
 	}
 	
 	public double getCircumRadius(){
-		return Math.sqrt((size /2)+(size/2));
+		return Math.sqrt(Math.pow((size /2),2)+Math.pow((size/2),2));
 	}
 	
 	public boolean isClear(){
-		return space.isLocationFree(position, (int) getCircumRadius());
+		int radius = (int) getCircumRadius();
+		Position p = position ;
+		
+		return space.isLocationFree(p, radius);
 	}
 	
 	public Position getPosition(){
