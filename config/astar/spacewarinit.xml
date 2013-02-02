@@ -4,9 +4,9 @@
 	<classname>grif1252.Project1Client</classname>
 	
 	<!-- You can choose the color your team's ships will be on the screen.  Specify the red, green, and blue components -->
-	<teamColorRed>0</teamColorRed>
-	<teamColorGreen>255</teamColorGreen>
-	<teamColorBlue>255</teamColorBlue>
+	<teamColorRed>72</teamColorRed>
+	<teamColorGreen>61</teamColorGreen>
+	<teamColorBlue>139</teamColorBlue>
 	
 	<!-- The name that shows up in the ladder -->
 	<ladderName>Tom and Jakob</ladderName>
