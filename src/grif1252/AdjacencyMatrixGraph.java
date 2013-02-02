@@ -2,7 +2,7 @@ package grif1252;
 
 import java.util.ArrayList;
 
-public class AdjacencyMatrixGraph
+public class AdjacencyMatrixGraph<T>
 {
 	final public static int ROW = 0;
 	final public static int COLUMN = 1;
@@ -13,7 +13,7 @@ public class AdjacencyMatrixGraph
 	
 	private boolean[][] adjacency_matrix;
 	
-	private ArrayList<Node> nodes;
+	private ArrayList<Node<T>> nodes;
 	
 	public AdjacencyMatrixGraph(int node_count)
 	{
@@ -26,20 +26,20 @@ public class AdjacencyMatrixGraph
 		adjacency_matrix = new boolean[this.rows][this.columns];
 	}
 	
-	public void storeNodes(ArrayList<Node> nodes)
+	public void storeNodes(ArrayList<Node<T>> nodes)
 	{
 		// make a handy dandy copy of the nodes
-		this.nodes = new ArrayList<Node>();
-		for(Node n: nodes)
-			this.nodes.add(new Node(n.item, n.matrix_id));
+		this.nodes = new ArrayList<Node<T>>();
+		for (Node<T> n : nodes)
+			this.nodes.add(new Node<T>(n.item, n.matrix_id, n.node_type));
 	}
 	
-	public ArrayList<Node> getNodes()
+	public ArrayList<Node<T>> getNodes()
 	{
 		return nodes;
 	}
 	
-	public void setConnected(Node A, Node B, boolean connected)
+	public void setConnected(Node<T> A, Node<T> B, boolean connected)
 	{
 		if (A.matrix_id == B.matrix_id)
 			connected = true;
@@ -49,7 +49,7 @@ public class AdjacencyMatrixGraph
 		adjacency_matrix[rows_columns[ROW]][rows_columns[COLUMN]] = connected;
 	}
 	
-	public boolean getConnected(Node A, Node B)
+	public boolean getConnected(Node<T> A, Node<T> B)
 	{
 		if (A.matrix_id == B.matrix_id)
 			return true;
@@ -59,7 +59,7 @@ public class AdjacencyMatrixGraph
 		return adjacency_matrix[rows_columns[ROW]][rows_columns[COLUMN]];
 	}
 	
-	public static int[] fixRowColumn(int row, int column)
+	private int[] fixRowColumn(int row, int column)
 	{
 		if (row > column)
 			return new int[] { row, column };

@@ -81,10 +81,10 @@
 		<probabilityMineable>0.25</probabilityMineable>
 		
 		<!-- The number of asteroids when the game starts -->
-		<numberInitialAsteroids>6</numberInitialAsteroids>
+		<numberInitialAsteroids>5</numberInitialAsteroids>
 		
 		<!-- The maximum number of asteroids in a game -->
-		<maximumNumberAsterids>6</maximumNumberAsterids>
+		<maximumNumberAsterids>5</maximumNumberAsterids>
 
 		<!-- The probability an asteroid is movable -->
 		<probabilityMoveable>0.0</probabilityMoveable>

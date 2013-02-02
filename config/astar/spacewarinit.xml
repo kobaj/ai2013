@@ -4,7 +4,7 @@
 	<classname>grif1252.Project1Client</classname>
 	
 	<!-- You can choose the color your team's ships will be on the screen.  Specify the red, green, and blue components -->
-	<teamColorRed>255</teamColorRed>
+	<teamColorRed>0</teamColorRed>
 	<teamColorGreen>255</teamColorGreen>
 	<teamColorBlue>255</teamColorBlue>
 	
