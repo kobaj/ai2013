@@ -31,7 +31,7 @@ public class ConstantMoveAction extends SpacewarAction
 		
 		movement.setTranslationalAcceleration(new Vector2D(destination.getX() - ship.getPosition().getX(), -destination.getY() + ship.getPosition().getY()));
 		
-		if(space.findShortestDistance(ship.getPosition(), destination) < 5)
+		if (space.findShortestDistance(ship.getPosition(), destination) < 5)
 			finished = true;
 		
 		return movement;

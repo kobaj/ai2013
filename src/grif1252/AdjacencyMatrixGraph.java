@@ -2,9 +2,7 @@ package grif1252;
 
 import java.util.ArrayList;
 
-import javax.swing.tree.DefaultMutableTreeNode;
-
-public class AdjacencyMatrixGraph<T>
+public class AdjacencyMatrixGraph
 {
 	final public static int ROW = 0;
 	final public static int COLUMN = 1;
@@ -13,7 +11,7 @@ public class AdjacencyMatrixGraph<T>
 	
 	final private double[][] adjacency_matrix;
 	
-	private ArrayList<Node<T>> nodes;
+	private ArrayList<Node> nodes;
 	
 	public AdjacencyMatrixGraph(int node_count)
 	{
@@ -25,29 +23,28 @@ public class AdjacencyMatrixGraph<T>
 		adjacency_matrix = new double[node_count][node_count];
 	}
 	
-	public void storeNodes(ArrayList<Node<T>> nodes)
+	public void storeNodes(ArrayList<Node> nodes)
 	{
 		// make a handy dandy copy of the nodes
-		this.nodes = new ArrayList<Node<T>>();
-		for (Node<T> n : nodes)
+		this.nodes = new ArrayList<Node>();
+		for (Node n : nodes)
 			this.nodes.add(n.copy());
 	}
 	
-	public ArrayList<Node<T>> getNodes()
+	public ArrayList<Node> getNodes()
 	{
-		ArrayList<Node<T>> all_nodes = new ArrayList<Node<T>>();
-		for (Node<T> n : nodes)
+		ArrayList<Node> all_nodes = new ArrayList<Node>();
+		for (Node n : nodes)
 			all_nodes.add(n.copy());
 		return all_nodes;
 	}
 	
-	public void setConnected(Node<T> A, Node<T> B, double distance)
+	public void setConnected(Node A, Node B, double distance)
 	{
 		if (A.matrix_id == B.matrix_id)
 			distance = 0;
 		
-		if(A.matrix_id >= node_count ||
-				B.matrix_id >= node_count)
+		if (A.matrix_id >= node_count || B.matrix_id >= node_count)
 			return;
 		
 		int[] rows_columns = fixRowColumn(A.matrix_id, B.matrix_id);
@@ -63,13 +60,12 @@ public class AdjacencyMatrixGraph<T>
 		}
 	}
 	
-	public boolean getConnected(Node<T> A, Node<T> B)
+	public boolean getConnected(Node A, Node B)
 	{
 		if (A.matrix_id == B.matrix_id)
 			return true;
 		
-		if(A.matrix_id >= node_count ||
-				B.matrix_id >= node_count)
+		if (A.matrix_id >= node_count || B.matrix_id >= node_count)
 			return false;
 		
 		int[] rows_columns = fixRowColumn(A.matrix_id, B.matrix_id);
@@ -87,11 +83,11 @@ public class AdjacencyMatrixGraph<T>
 	}
 	
 	// this is not recursive. just one level deep
-	public ArrayList<Node<T>> getChildren(Node<T> parent)
+	public ArrayList<Node> getChildren(Node parent)
 	{
-		ArrayList<Node<T>> children = new ArrayList<Node<T>>();
+		ArrayList<Node> children = new ArrayList<Node>();
 		
-		for (Node<T> n : nodes)
+		for (Node n : nodes)
 			if (parent.matrix_id != n.matrix_id)
 			{
 				if (getConnected(parent, n))
@@ -106,10 +102,10 @@ public class AdjacencyMatrixGraph<T>
 	}
 	
 	/*
-	 * public void buildTree(DefaultMutableTreeNode top, Node<T> parent) { ArrayList<Node<T>> visited = new ArrayList<Node<T>>(); visited.add(parent);
+	 * public void buildTree(DefaultMutableTreeNode top, Node parent) { ArrayList<Node> visited = new ArrayList<Node>(); visited.add(parent);
 	 * 
-	 * while (true) { ArrayList<Node<T>> children = getChildren(parent); for (Node<T> child : children) { if (!visited.contains(child)) { top.add(new DefaultMutableTreeNode(child));
-	 * visited.add(child); } } } }
+	 * while (true) { ArrayList<Node> children = getChildren(parent); for (Node child : children) { if (!visited.contains(child)) { top.add(new DefaultMutableTreeNode(child)); visited.add(child); } }
+	 * } }
 	 */
 	
 	private int[] fixRowColumn(int row, int column)
