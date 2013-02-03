@@ -2,6 +2,7 @@
 <TeamClientConfig>
 	<!-- The name of the client class (this is used to construct the client so it needs to be the full class name) -->
 	<classname>grif1252.Project1Client</classname>
+	<!--<classname>sheh1359.UltraClient</classname>-->
 	
 	<!-- You can choose the color your team's ships will be on the screen.  Specify the red, green, and blue components -->
 	<teamColorRed>72</teamColorRed>
