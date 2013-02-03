@@ -184,7 +184,7 @@ public class Project1Client extends TeamClient
 				{
 					ArrayList<Node> outer_nodes = new ArrayList<Node>(); // all nodes
 					
-					goal = addStartAndGoal(sub_local_space, ship, outer_nodes, true, out_goal);
+					goal = addStartAndGoal(sub_local_space, ship, outer_nodes, false, out_goal);
 					
 					if (goal == null)
 						break;
@@ -198,8 +198,8 @@ public class Project1Client extends TeamClient
 						// calculate our matrix
 						// calculateNodesHalfAsteroids(local_space, ship.getRadius(), ship, true);
 						// calculateNodesRandom(local_space, ship.getRadius(), ship, random, true);
-						 calculateNodesGrid(sub_local_space, RES, Project1Client.SQUARE_PADDING, ship, false, nodes);
-						//calculateNodesGridDense(space, RES, Project1Client.SQUARE_PADDING, ship, false, nodes);
+						calculateNodesGrid(sub_local_space, RES, Project1Client.SQUARE_PADDING, ship, false, nodes);
+						// calculateNodesGridDense(space, RES, Project1Client.SQUARE_PADDING, ship, false, nodes);
 						
 						// make all connections
 						matrix_graph = calculateDistanceSetConnections(sub_local_space, ship.getRadius(), nodes, false, (int) (MAX_NUM_NODE_CONNECTIONS), NodeConnections.closest, ship);
@@ -225,14 +225,14 @@ public class Project1Client extends TeamClient
 					
 				}
 				
-				// if (global_output)
-				System.out.println("LOOP ran for " + e * i + " times. (" + e + ", " + i + ")");
+				if (global_output)
+					System.out.println("LOOP ran for " + e * i + " times. (" + e + ", " + i + ")");
 				
 				// uncomment to draw lines
 				ArrayList<Shadow> node_shadows = new ArrayList<Shadow>();
 				// for(Node n: nodes)
 				// drawNodesConnections(space, n, n, ship.getRadius(), node_shadows); // draw all nodes
-				drawLines(space, matrix_graph, 0, node_shadows); // draw all the lines connecting all nodes
+				// drawLines(space, matrix_graph, 0, node_shadows); // draw all the lines connecting all nodes
 				// drawSolution(local_space, fast_path, ship.getRadius(), node_shadows); // draw the shortest path
 				managedShadows.put(ship.getId() + "sources", node_shadows);
 				
@@ -328,18 +328,12 @@ public class Project1Client extends TeamClient
 		
 		ArrayList<Node> visited_nodes = new ArrayList<Node>();
 		
-		int e = 0;
-		
 		for (Node n1 : nodes)
 		{
 			for (Node n2 : nodes)
-			{
 				if (!n1.equals(n2) && !visited_nodes.contains(n2) && temp.getConnected(n1, n2))
-				{
 					drawNodesConnections(space, n1, n2, min_radius, node_shadows);
-					e++;
-				}
-			}
+			
 			visited_nodes.add(n1);
 		}
 		
@@ -484,7 +478,7 @@ public class Project1Client extends TeamClient
 		int ship_min_y = (int) (ship.getPosition().getY() - padding);
 		int ship_max_y = (int) (ship.getPosition().getY() + padding);
 		
-		calculateNodesGridDense_helper(space, ship_min_x, ship_max_x, ship_min_y, ship_max_x, (int) divider / 2, nodes, ship);
+		calculateNodesGridDense_helper(space, ship_min_x, ship_max_x, ship_min_y, ship_max_y, (int) divider / 2, nodes, ship);
 		
 		Position goal = nodes.get(0).position;
 		
@@ -522,8 +516,15 @@ public class Project1Client extends TeamClient
 		int min_y = 0;
 		int max_y = Project1Client.Y_RES;
 		
+		Vector2D smallest_distance = space.findShortestDistanceVector(ship.getPosition(), goal);
+		double radian = smallest_distance.getAngle();
+		double degree = Math.toDegrees(radian);
+		
+		if (output)
+			System.out.println("Radian: " + radian + " degree: " + Math.toDegrees(radian));
+		
 		// focus in the search just a little bit
-		if (ship.getPosition().getX() < goal.getX())
+		if (-90 < degree && degree < 90)
 		{
 			min_x = (int) (ship.getPosition().getX() - padding);
 			max_x = (int) (goal.getX() + padding);
@@ -534,7 +535,7 @@ public class Project1Client extends TeamClient
 			min_x = (int) (goal.getX() - padding);
 		}
 		
-		if (ship.getPosition().getY() < goal.getY())
+		if (180 > degree && degree > 0)
 		{
 			min_y = (int) (ship.getPosition().getY() - padding);
 			max_y = (int) (goal.getY() + padding);
@@ -865,7 +866,7 @@ public class Project1Client extends TeamClient
 				int divisors = (int) Math.ceil(distance / min_distance);
 				boolean collision = false;
 				
-				for (int j = 1; j < divisors -1; j++)
+				for (int j = 1; j < divisors - 1; j++)
 				{
 					double next_x = lerp(0, divisors, j, n1.position.getX(), n2.position.getX());
 					double next_y = lerp(0, divisors, j, n1.position.getY(), n2.position.getY());
