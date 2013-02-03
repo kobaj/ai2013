@@ -20,7 +20,7 @@ public class AdjacencyMatrixGraph<T>
 		if (node_count <= 0)
 			node_count = 1;
 		
-		this.node_count = node_count;
+		this.node_count = node_count; // because we swap row and column to reduce the table height, we need to increase its girth.
 		
 		adjacency_matrix = new double[node_count][node_count];
 	}
@@ -36,7 +36,7 @@ public class AdjacencyMatrixGraph<T>
 	public ArrayList<Node<T>> getNodes()
 	{
 		ArrayList<Node<T>> all_nodes = new ArrayList<Node<T>>();
-		for(Node<T> n: nodes)
+		for (Node<T> n : nodes)
 			all_nodes.add(n.copy());
 		return all_nodes;
 	}
@@ -46,9 +46,21 @@ public class AdjacencyMatrixGraph<T>
 		if (A.matrix_id == B.matrix_id)
 			distance = 0;
 		
+		if(A.matrix_id >= node_count ||
+				B.matrix_id >= node_count)
+			return;
+		
 		int[] rows_columns = fixRowColumn(A.matrix_id, B.matrix_id);
 		
-		adjacency_matrix[rows_columns[ROW]][rows_columns[COLUMN]] = distance;
+		try
+		{
+			adjacency_matrix[rows_columns[ROW]][rows_columns[COLUMN]] = distance;
+		}
+		catch (IndexOutOfBoundsException e)
+		{
+			System.out.println("EXCEPTION: Values for row, column, nodecount: " + rows_columns[ROW] + ":" + rows_columns[COLUMN] + ":" + node_count);
+			throw (e);
+		}
 	}
 	
 	public boolean getConnected(Node<T> A, Node<T> B)
@@ -56,9 +68,22 @@ public class AdjacencyMatrixGraph<T>
 		if (A.matrix_id == B.matrix_id)
 			return true;
 		
+		if(A.matrix_id >= node_count ||
+				B.matrix_id >= node_count)
+			return false;
+		
 		int[] rows_columns = fixRowColumn(A.matrix_id, B.matrix_id);
 		
-		return (adjacency_matrix[rows_columns[ROW]][rows_columns[COLUMN]] > 0.0);
+		try
+		{
+			return (adjacency_matrix[rows_columns[ROW]][rows_columns[COLUMN]] > 0.0);
+		}
+		catch (IndexOutOfBoundsException e)
+		{
+			System.out.println("EXCEPTION: Values for row, column, nodecount: " + rows_columns[ROW] + ":" + rows_columns[COLUMN] + ":" + node_count);
+			throw (e);
+		}
+		
 	}
 	
 	// this is not recursive. just one level deep
@@ -79,7 +104,6 @@ public class AdjacencyMatrixGraph<T>
 		
 		return children;
 	}
-	
 	
 	/*
 	 * public void buildTree(DefaultMutableTreeNode top, Node<T> parent) { ArrayList<Node<T>> visited = new ArrayList<Node<T>>(); visited.add(parent);
