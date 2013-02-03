@@ -95,7 +95,6 @@ public class UltraClient extends TeamClient {
 				}
 				
 			}
-			System.out.println(finalGoal);
 			
 			
 			
@@ -138,6 +137,11 @@ public class UltraClient extends TeamClient {
 					AStarTwo a = new AStarTwo(graph,space,s,s.getBlock(ship.getPosition()).getPosition(),finalGoal);
 	
 					aPaths = a.getPaths();
+					
+					// Use A* to get within the nearest block of the goal
+					// discard the beginning and end of the path. They 
+					// seem to contain garbage data or data that leads to 
+					// back and forth motion when the path is updated
 					try{
 						Position newGoal = aPaths.get(2);
 						
@@ -148,22 +152,17 @@ public class UltraClient extends TeamClient {
 						int newX = (int) (v.getXValue() + ship.getPosition().getX());
 						int newY = (int) (v.getYValue() + ship.getPosition().getY());
 						Position multGoal = new Position (newX,newY);
-						System.out.println("final: " + finalGoal);
-						System.out.println("new: " + newGoal);
-						System.out.println("path length:" + aPaths.size());
 						MoveAction newAction = new MoveAction(space, ship.getPosition(), multGoal);
 						shipActions.put(ship.getId(), newAction);
+						
+					// Once we are too close to use the grid for navigation,
+					// go straight to the final goal
 					}catch(Exception e){
 						Position newGoal = finalGoal ;
 						finalApproach = true ;
 						System.out.println("final approach");
 						MoveAction newAction = new MoveAction(space, ship.getPosition(), newGoal);
 						shipActions.put(ship.getId(), newAction);
-					}
-					
-					
-					for(Position p : aPaths){
-						System.out.println(p);
 					}
 					
 
