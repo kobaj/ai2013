@@ -26,11 +26,17 @@ public class UltraClient extends TeamClient {
 	ArrayList<Shadow> newShadows;
 	ArrayList<Shadow> oldShadows;
 	HashMap<Ship, Shadow> currentShadows;
+
+	HashMap<Ship, Position> stuckStart;
+	HashMap<Ship,Position> stuckNow;
+	HashMap<Ship,Integer> stuckCounter;
+	
 	int counter = 20;
 	Position finalGoal ;
 	boolean finalApproach ;
 	String goalType ;
 	int moneyGoal;
+	
 	
 	public void initialize() {
 		newShadows = new ArrayList<Shadow>();
@@ -40,141 +46,211 @@ public class UltraClient extends TeamClient {
 		finalApproach = false ;
 		goalType = "none";
 		moneyGoal = 0;
+		
+		stuckStart = new HashMap<Ship, Position>();
+		stuckNow = new HashMap<Ship, Position>();
+		stuckCounter = new HashMap<Ship, Integer>();
 	}
 	
 	@Override
-	public void shutDown() {
-		// TODO Auto-generated method stub
-
+	public void shutDown() {}
+	
+	public Base getBase(Toroidal2DPhysics space,Ship ship){
+		for (Base base : space.getBases()) {
+			if (base.getTeamName().equalsIgnoreCase(ship.getTeamName())) {
+				return base ;
+			}
+		}
+		return null;
 	}
 	
 	// Do a step, given info about the space and the ships on our team
 	public HashMap<String, SpacewarAction> getAction(Toroidal2DPhysics space, ArrayList<Ship> ships) {
 		counter--;
-
+		
 		// One action for every ship,  to be determined in the below loop
 		HashMap<String, SpacewarAction> shipActions = new HashMap<String, SpacewarAction>();
 		for (Ship ship : ships) {
+			
+			// make sure the ship isn't stuck by ensuring
+			// that it moved atleast 10 pixels in the last
+			// 80 steps.  If it is stuck, invalidate the final goal
+			if(stuckCounter.get(ship) == null){
+				stuckCounter.put(ship, 80);
+			}
+			if(stuckStart.get(ship) == null){
+				stuckStart.put(ship, ship.getPosition());
+			}
+			stuckCounter.put(ship, stuckCounter.get(ship) - 1);
+			if(stuckCounter.get(ship) == 0){
+				stuckNow.put(ship,ship.getPosition());
+				if(space.findShortestDistance(stuckNow.get(ship), stuckStart.get(ship)) < 10){
+					finalGoal = null;
+					System.out.println("I'm stuck. Trying a different goal...");
+				}
+				stuckStart.put(ship, ship.getPosition());
+				stuckCounter.put(ship, 80);
+			}
+	
+			// initialization stuff
 			SpacewarAction current = ship.getCurrentAction();
 			SpaceGrid s = new SpaceGrid(space);
 			ArrayList<Position> aPaths = new ArrayList<Position>();
+			Base base = getBase(space,ship);
 					
-			if((finalApproach == true && (current != null && current.isMovementFinished())) || (goalType.equals("money") && ship.getMoney() == 0) || (goalType.equals("asteroid") && ship.getMoney() == moneyGoal)  ){
+		
+			// determine whether a "final goal" has been reached
+			if(	(finalApproach == true && (current != null && current.isMovementFinished())) || 
+				(goalType.equals("money") && ship.getMoney() == 0) || 
+				(goalType.equals("asteroid") && ship.getMoney() == moneyGoal)  
+			){
+				// set variables to activate other parts below
 				finalGoal = null;
 				finalApproach = false ;
-				System.out.println("Final Goal Reached");
 				current = null;
-				shipActions.clear();
+
+				System.out.println("Final Goal Reached");
 			}
 			
-			if(finalGoal == null){
-				if(ship.getMoney() <= 50){
+			// There is no final goal. Create a new one
+			if(finalGoal == null || space.isLocationFree(finalGoal, 2)){
+				finalGoal = null;
+				oldShadows.add(currentShadows.get(ship));
+
+				// The ship does not have enough money to take back
+				if(ship.getMoney() <= 10){
+					
+					// Find the asteroid so that the sum of the distances between 
+					// it and the base plus it and the ship are minimized. 
+					// Also make sure the amount of money is acceptable
 					ArrayList<Asteroid> as = space.getAsteroids();
-					Asteroid closest = null ;
+					Asteroid best = null ;
 					for(Asteroid a : as){
-						if(closest == null || space.findShortestDistance(ship.getPosition(), a.getPosition()) <  space.findShortestDistance(ship.getPosition(), closest.getPosition())){
-							if(a.getMoney() > 10){
-								closest = a;
+						
+						double  shipSum =	space.findShortestDistance(ship.getPosition(), a.getPosition());
+						double baseSum =	space.findShortestDistance(base.getPosition(), a.getPosition());
+						
+						if(best != null ){
+							double  bestSum = space.findShortestDistance(ship.getPosition(), best.getPosition());
+							
+							// Is the the best closest asteroid that's on our side of the base and worth money?
+							if(	(shipSum <  baseSum) && (shipSum < bestSum) && a.getMoney() >= 100){
+								best = a;
+							// 
+							}
+							
+						}else{
+							// just take any asteroid worth money. This will only ever
+							// be used of nothing else is found
+							if(a.getMoney() > 0){
+								best = a;
 							}
 						}
+						
 					}
+					
+					// set control variables
 					goalType = "asteroid";
-					moneyGoal = ship.getMoney() + closest.getMoney();
-					finalGoal = closest.getPosition();
+					moneyGoal = ship.getMoney() + best.getMoney();
+					finalGoal = best.getPosition();
 	
+				// The ship has enough money to take back
 				}else{
-						goalType = "money";
-						for (Base base : space.getBases()) {
-							if (base.getTeamName().equalsIgnoreCase(ship.getTeamName())) {
-								finalGoal = base.getPosition();
-								System.out.println("heading to base");
-								break;
-							}
-						}
-				
+						goalType = "money";						
+						finalGoal = base.getPosition();
+						System.out.println("heading to base");
 				}
 				
+				// indicate the final goal
+				Shadow shadow = new CircleShadow(3, getTeamColor(), finalGoal);
+				newShadows.add(shadow);
+				currentShadows.put(ship, shadow);
+				
 			}
 			
-			
-			
-		
-			
+			// if a movement just finished make sure finalApproach is falsified.
+			// This way if we just finished a final approach we can go back to
+			// finding multiple step paths with A*
 			if(current != null && current.isMovementFinished()){
 				finalApproach = false ;
 			}
 			
-			// dtermine the next action
-			if ( finalApproach == false && (current == null || current.isMovementFinished() || counter == 0 )) {
-				counter = 20;
-				shipActions.clear();
-				current = null;
-				oldShadows.add(currentShadows.get(ship));
+			// determine the next action towards the final goal
+			if(	
+					finalApproach == false 	&& 
+					(current == null || current.isMovementFinished() || counter == 0 )
+			){
 				
-				try{
-					AdjacencyListGraph<Position> graph = new AdjacencyListGraph<Position>();
-					// populate the graph
-					for(ArrayList<SpaceBlock> row : s.getBlocks()){
-						for(SpaceBlock b : row ){
-							graph.addNode(b.getPosition());
-						}
+				// restart the timeout for replanning
+				counter = 20;
+				
+				
+				// Populate a graph of positions of gridblocks
+				AdjacencyListGraph<Position> graph = new AdjacencyListGraph<Position>();
+				for(ArrayList<SpaceBlock> row : s.getBlocks()){
+					for(SpaceBlock b : row ){
+						graph.addNode(b.getPosition());
 					}
-					try{
-						//set unit cost paths if not occupied and adjacent
-						for(Node<Position> n : graph.getNodes()){
-							ArrayList<SpaceBlock> adj = s.getAdjacentTo(s.getBlock(n.getItem()));
-							for(SpaceBlock b: adj){
-								if(b.isClear() || b.contains(finalGoal)){
-									graph.addPath(n.getItem(),b.getPosition() , 1);
-								}
+				}
+				
+				// Connect the graph nodes containing unoccupied adjacent positions
+				try{
+					//set unit cost paths if not occupied and adjacent
+					for(Node<Position> n : graph.getNodes()){
+						ArrayList<SpaceBlock> adj = s.getAdjacentTo(s.getBlock(n.getItem()));
+						for(SpaceBlock b: adj){
+							if(b.isClear() || b.contains(finalGoal)){
+								graph.addPath(n.getItem(),b.getPosition() , 1);
 							}
 						}
-					}catch(Exception e){
-						System.out.println("cant get block");
-						System.exit(0);
 					}
-					
-					AStarTwo a = new AStarTwo(graph,space,s,s.getBlock(ship.getPosition()).getPosition(),finalGoal);
-	
-					aPaths = a.getPaths();
-					
-					// Use A* to get within the nearest block of the goal
-					// discard the beginning and end of the path. They 
-					// seem to contain garbage data or data that leads to 
-					// back and forth motion when the path is updated
-					try{
-						Position newGoal = aPaths.get(2);
-						
-						// make the ship go faster by extending the vector to a further position
-						Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
-						v.multiply(5);
-						
-						int newX = (int) (v.getXValue() + ship.getPosition().getX());
-						int newY = (int) (v.getYValue() + ship.getPosition().getY());
-						Position multGoal = new Position (newX,newY);
-						MoveAction newAction = new MoveAction(space, ship.getPosition(), multGoal);
-						shipActions.put(ship.getId(), newAction);
-						
-					// Once we are too close to use the grid for navigation,
-					// go straight to the final goal
-					}catch(Exception e){
-						Position newGoal = finalGoal ;
-						finalApproach = true ;
-						System.out.println("final approach");
-						MoveAction newAction = new MoveAction(space, ship.getPosition(), newGoal);
-						shipActions.put(ship.getId(), newAction);
-					}
-					
-
-					a = null;
-					aPaths = null;
-					
-
 				}catch(Exception e){
-					System.out.println("error");
+					System.out.println("cant get block");
+				}
+				
+				// Perform A* to get a path to the final goal
+				AStarTwo a;
+				try {
+					a = new AStarTwo(graph,space,s,s.getBlock(ship.getPosition()).getPosition(),finalGoal);
+					aPaths = a.getPaths();
+					//System.out.println(aPaths.size());
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 
+				
+				
+				// Use the path from A* to get within the nearest gridblock
+				// discard the beginning nodes of the path. The first is just 
+				// the start position and the second contains "noise" that 
+				// causes back and forth motion as the path is updated repeatedly
+				try{
+					
+					Position newGoal = aPaths.get(2);
+					
+					// make the ship go faster by extending the displacement vector to a further position
+					Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
+					v.multiply(10);
+					int newX = (int) (v.getXValue() + ship.getPosition().getX());
+					int newY = (int) (v.getYValue() + ship.getPosition().getY());
+					Position multGoal = new Position (newX,newY);
+					
+					// set the action
+					MoveAction newAction = new MoveAction(space, ship.getPosition(), multGoal);
+					shipActions.put(ship.getId(), newAction);
+					
+					
+				// We are too close to use the grid for navigation.
+				// go straight to the final goal
+				}catch(Exception e){
+					Position newGoal = finalGoal ;
+					finalApproach = true ;
+					System.out.println("final approach");
+					MoveAction newAction = new MoveAction(space, ship.getPosition(), newGoal);
+					shipActions.put(ship.getId(), newAction);
+				}
 
+			// The current action is still valid, just reuse it
 			} else {
 				shipActions.put(ship.getId(), ship.getCurrentAction());
 			}
