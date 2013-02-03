@@ -176,7 +176,7 @@ public class Project1Client extends TeamClient
 						ship_goals.put(ship, Asteroid.class.cast(matrix_graph.getNodes().get(0).item).getPosition().toString());
 					
 					// find the fastest way through it
-					fast_path = AStar(space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
+					fast_path = AStar(local_space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
 					
 					// move on
 					i++;
@@ -194,19 +194,19 @@ public class Project1Client extends TeamClient
 				// for(Node<Position> n: nodes)
 				// drawNodesConnections(space, n, n, ship.getRadius(), node_shadows); // draw all nodes
 				// drawLines(space, matrix_graph, 0, node_shadows); // draw all the lines connecting all nodes
-				drawSolution(space, fast_path, ship.getRadius(), node_shadows); // draw the shortest path
+				drawSolution(local_space, fast_path, ship.getRadius(), node_shadows); // draw the shortest path
 				managedShadows.put(ship.getId() + "sources", node_shadows);
 				
 				// make the goals
 				Position currentPosition = ship.getPosition();
-				Position newGoal = (fast_path != null && fast_path.get(1) != null ? fast_path.get(1).position : space.getRandomFreeLocation(random, ship.getRadius())); // get next movement
+				Position newGoal = (fast_path != null && fast_path.get(1) != null ? fast_path.get(1).position : local_space.getRandomFreeLocation(random, ship.getRadius())); // get next movement
 				local_goals.put(ship, newGoal);
 				
 				if (SpacewarObject.class.isAssignableFrom(matrix_graph.getNodes().get(0).item.getClass()) && !Base.class.isAssignableFrom(matrix_graph.getNodes().get(0).item.getClass()))
 					local_space.removeObject((SpacewarObject) matrix_graph.getNodes().get(0).item);
 				
 				// SpacewarAction newAction = new ConstantMoveAction(currentPosition, newGoal);//MoveAction(space, currentPosition, newGoal);
-				SpacewarAction newAction = new MoveAction(space, currentPosition, newGoal);
+				SpacewarAction newAction = new MoveAction(local_space, currentPosition, newGoal);
 				
 				// System.out.println("Ship is at " + currentPosition + " and goal is " + newGoal);
 				Shadow shadow = new CircleShadow(3, getTeamColor(), newGoal);
@@ -219,6 +219,7 @@ public class Project1Client extends TeamClient
 				
 				if (global_output)
 					System.out.println("Finished with ship");
+				System.gc();
 			}
 			else
 			{
