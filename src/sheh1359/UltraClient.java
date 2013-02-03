@@ -29,6 +29,8 @@ public class UltraClient extends TeamClient {
 	int counter = 20;
 	Position finalGoal ;
 	boolean finalApproach ;
+	String goalType ;
+	int moneyGoal;
 	
 	public void initialize() {
 		newShadows = new ArrayList<Shadow>();
@@ -36,6 +38,8 @@ public class UltraClient extends TeamClient {
 		currentShadows = new HashMap<Ship,Shadow>();
 		finalGoal = null ;
 		finalApproach = false ;
+		goalType = "none";
+		moneyGoal = 0;
 	}
 	
 	@Override
@@ -55,9 +59,12 @@ public class UltraClient extends TeamClient {
 			SpaceGrid s = new SpaceGrid(space);
 			ArrayList<Position> aPaths = new ArrayList<Position>();
 					
-			if(finalApproach == true && current != null && current.isMovementFinished()){
+			if((finalApproach == true && (current != null && current.isMovementFinished())) || (goalType.equals("money") && ship.getMoney() == 0) || (goalType.equals("asteroid") && ship.getMoney() == moneyGoal)  ){
 				finalGoal = null;
+				finalApproach = false ;
 				System.out.println("Final Goal Reached");
+				current = null;
+				shipActions.clear();
 			}
 			
 			if(finalGoal == null){
@@ -71,8 +78,12 @@ public class UltraClient extends TeamClient {
 							}
 						}
 					}
+					goalType = "asteroid";
+					moneyGoal = ship.getMoney() + closest.getMoney();
 					finalGoal = closest.getPosition();
+	
 				}else{
+						goalType = "money";
 						for (Base base : space.getBases()) {
 							if (base.getTeamName().equalsIgnoreCase(ship.getTeamName())) {
 								finalGoal = base.getPosition();
