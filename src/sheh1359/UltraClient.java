@@ -6,9 +6,12 @@ import java.util.HashMap;
 import java.util.Random;
 
 import spacewar2.actions.MoveAction;
+import spacewar2.actions.MoveToObjectAction;
 import spacewar2.actions.SpacewarAction;
 import spacewar2.actions.SpacewarActionException;
 import spacewar2.clients.TeamClient;
+import spacewar2.objects.Asteroid;
+import spacewar2.objects.Base;
 import spacewar2.objects.Bullet;
 import spacewar2.objects.Ship;
 import spacewar2.shadows.CircleShadow;
@@ -24,11 +27,15 @@ public class UltraClient extends TeamClient {
 	ArrayList<Shadow> oldShadows;
 	HashMap<Ship, Shadow> currentShadows;
 	int counter = 20;
-
+	Position finalGoal ;
+	boolean finalApproach ;
+	
 	public void initialize() {
 		newShadows = new ArrayList<Shadow>();
 		oldShadows = new ArrayList<Shadow>();
 		currentShadows = new HashMap<Ship,Shadow>();
+		finalGoal = null ;
+		finalApproach = false ;
 	}
 	
 	@Override
@@ -44,18 +51,56 @@ public class UltraClient extends TeamClient {
 		// One action for every ship,  to be determined in the below loop
 		HashMap<String, SpacewarAction> shipActions = new HashMap<String, SpacewarAction>();
 		for (Ship ship : ships) {
-			
 			SpacewarAction current = ship.getCurrentAction();
 			SpaceGrid s = new SpaceGrid(space);
 			ArrayList<Position> aPaths = new ArrayList<Position>();
+					
+			if(finalApproach == true && current != null && current.isMovementFinished()){
+				finalGoal = null;
+				System.out.println("Final Goal Reached");
+			}
+			
+			if(finalGoal == null){
+				if(ship.getMoney() <= 50){
+					ArrayList<Asteroid> as = space.getAsteroids();
+					Asteroid closest = null ;
+					for(Asteroid a : as){
+						if(closest == null || space.findShortestDistance(ship.getPosition(), a.getPosition()) <  space.findShortestDistance(ship.getPosition(), closest.getPosition())){
+							if(a.getMoney() > 10){
+								closest = a;
+							}
+						}
+					}
+					finalGoal = closest.getPosition();
+				}else{
+						for (Base base : space.getBases()) {
+							if (base.getTeamName().equalsIgnoreCase(ship.getTeamName())) {
+								finalGoal = base.getPosition();
+								System.out.println("heading to base");
+								break;
+							}
+						}
+				
+				}
+				
+			}
+			System.out.println(finalGoal);
+			
+			
+			
+		
+			
+			if(current != null && current.isMovementFinished()){
+				finalApproach = false ;
+			}
 			
 			// dtermine the next action
-			if (ship.getCurrentAction() == null || (current.isMovementFinished() && aPaths.size() == 0)) {
+			if ( finalApproach == false && (current == null || current.isMovementFinished() || counter == 0 )) {
+				counter = 20;
+				shipActions.clear();
+				current = null;
 				oldShadows.add(currentShadows.get(ship));
 				
-				
-				Position currentPosition = ship.getPosition();
-
 				try{
 					AdjacencyListGraph<Position> graph = new AdjacencyListGraph<Position>();
 					// populate the graph
@@ -64,46 +109,62 @@ public class UltraClient extends TeamClient {
 							graph.addNode(b.getPosition());
 						}
 					}
-					
-					//set unit cost paths if not occupied
-					for(Node<Position> n : graph.getNodes()){
-						ArrayList<SpaceBlock> adj = s.getAdjacentTo(s.getBlock(n.getItem()));
-						for(SpaceBlock b: adj){
-							if(b.isClear()){
-								graph.addPath(n.getItem(),b.getPosition() , 1);
+					try{
+						//set unit cost paths if not occupied and adjacent
+						for(Node<Position> n : graph.getNodes()){
+							ArrayList<SpaceBlock> adj = s.getAdjacentTo(s.getBlock(n.getItem()));
+							for(SpaceBlock b: adj){
+								if(b.isClear() || b.contains(finalGoal)){
+									graph.addPath(n.getItem(),b.getPosition() , 1);
+								}
 							}
 						}
+					}catch(Exception e){
+						System.out.println("cant get block");
+						System.exit(0);
 					}
-
 					
-					AStarTwo a = new AStarTwo(graph,space,s,s.getBlock(ship.getPosition()).getPosition(),new Position(500,500));
+					AStarTwo a = new AStarTwo(graph,space,s,s.getBlock(ship.getPosition()).getPosition(),finalGoal);
+	
 					aPaths = a.getPaths();
+					try{
+						Position newGoal = aPaths.get(2);
+						
+						// make the ship go faster by extending the vector to a further position
+						Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
+						v.multiply(5);
+						
+						int newX = (int) (v.getXValue() + ship.getPosition().getX());
+						int newY = (int) (v.getYValue() + ship.getPosition().getY());
+						Position multGoal = new Position (newX,newY);
+						System.out.println("final: " + finalGoal);
+						System.out.println("new: " + newGoal);
+						System.out.println("path length:" + aPaths.size());
+						MoveAction newAction = new MoveAction(space, ship.getPosition(), multGoal);
+						shipActions.put(ship.getId(), newAction);
+					}catch(Exception e){
+						Position newGoal = finalGoal ;
+						finalApproach = true ;
+						System.out.println("final approach");
+						MoveAction newAction = new MoveAction(space, ship.getPosition(), newGoal);
+						shipActions.put(ship.getId(), newAction);
+					}
 					
-					Position newGoal = aPaths.get(0);
-					MoveAction newAction = new MoveAction(space, currentPosition, newGoal);
-					shipActions.put(ship.getId(), newAction);
-
-					System.out.println("path length:" + aPaths.size());
+					
 					for(Position p : aPaths){
-						Shadow shadow = new CircleShadow(3, getTeamColor(), p);
-						newShadows.add(shadow);
-						currentShadows.put(ship, shadow);
 						System.out.println(p);
 					}
 					
+
+					a = null;
+					aPaths = null;
 					
 
 				}catch(Exception e){
 					System.out.println("error");
 				}
 
-			// We are currently carrying out an action, use it again
-			}else if (current.isMovementFinished() || aPaths.size() != 0){
-				aPaths.remove(0);
-				Position newGoal = aPaths.get(0);
-				MoveAction newAction = new MoveAction(space,ship.getPosition(), newGoal);
-				shipActions.put(ship.getId(), newAction);
-				
+
 			} else {
 				shipActions.put(ship.getId(), ship.getCurrentAction());
 			}

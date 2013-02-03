@@ -18,8 +18,7 @@ public class AStarTwo{
 	SpaceGrid grid;
 	
 	
-	class HeuristicComparator implements Comparator<AstarNode>
-	{
+	class HeuristicComparator implements Comparator<AstarNode>{
 		@Override
 		public int compare(AstarNode a, AstarNode b){
 			if(f(a) < f(b) ){
@@ -31,9 +30,6 @@ public class AStarTwo{
 			}
 		}
 	}
-
-
-	
 	
 	public AStarTwo(AdjacencyListGraph graph,Toroidal2DPhysics space, SpaceGrid grid, Position start, Position goal) {
 
@@ -83,7 +79,7 @@ public class AStarTwo{
 				e.printStackTrace();
 			}
 		}
-		
+
 		while(true){
 			if(fringe.isEmpty()){
 				return null;

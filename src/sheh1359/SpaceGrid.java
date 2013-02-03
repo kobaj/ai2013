@@ -16,7 +16,7 @@ public class SpaceGrid{
 	public SpaceGrid(Toroidal2DPhysics space){
 		width = 1024 ;
 		height = 768 ;
-		blockSize = 64 ;
+		blockSize = 32 ;
 		this.space = space ;
 		blocks = new ArrayList<ArrayList<SpaceBlock>>();
 		
