@@ -260,11 +260,11 @@ public class Project1Client extends TeamClient
 					
 					// remove our goal
 					ship_goals.remove(ship);
+					local_goals.remove(ship);
 				}
 				
 				SpacewarAction newAction = new MoveAction(local_space, currentPosition, newGoal);
 				
-				// System.out.println("Ship is at " + currentPosition + " and goal is " + newGoal);
 				Shadow shadow = new CircleShadow(3, getTeamColor(), newGoal);
 				ArrayList<Shadow> goal_shadow = new ArrayList<Shadow>();
 				goal_shadow.add(shadow);
@@ -274,7 +274,7 @@ public class Project1Client extends TeamClient
 				actions.put(ship.getId(), newAction);
 				
 				if (global_output)
-					System.out.println("Finished with ship");
+					System.out.println("Finished with ship: " + ship.toString());
 				System.gc();
 			}
 			else
