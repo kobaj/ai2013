@@ -67,7 +67,7 @@ class Node<T>{
 		paths.add(new Path<T>(dest,cost));
 	}
 	
-	public boolean hasPathTo(T dest){
+	public boolean hasDirectPathTo(T dest){
 		
 		for(Path<T> path : paths){
 			if( path.getDest() == dest){

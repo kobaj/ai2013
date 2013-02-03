@@ -30,7 +30,6 @@ public class AStarLocation{ // Eventually make a general Astar class and extend
 		for(ArrayList<SpaceBlock> row : grid.getBlocks()){
 			for(SpaceBlock b : row ){
 				graph.addNode(b.getPosition());
-				System.out.println(b.getPosition().toString());
 			}
 		}
 		
@@ -49,12 +48,15 @@ public class AStarLocation{ // Eventually make a general Astar class and extend
 		return graph.getPathCost(start.getPosition(), n.getItem());
 	}
 	
-	public double h(Node<Position> n){
-		int deltaX = (int) (n.getItem().getX() - goal.getX());
-		int deltaY = (int) (n.getItem().getY() - goal.getY());
-		return Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
+	public double h(Node<Position> n) throws Exception{
+		return grid.getDistance(grid.getBlock(n.getItem()), goal);
 	}
 	public double f(Node<Position> n) throws Exception{
+		if(g(n) != 1){
+			System.out.println("g != 1");
+			System.exit(0);
+		}
+		System.out.println("f(n) = " + g(n) + " + " +  h(n));
 		return g(n) + h(n);
 	}
 	
@@ -62,26 +64,47 @@ public class AStarLocation{ // Eventually make a general Astar class and extend
 		return b.contains(goal);
 	}
 	
-	public ArrayList<SpaceBlock> getPaths() throws Exception{
+	public ArrayList<SpaceBlock> getPaths()  {
 			ArrayList<SpaceBlock> paths = new ArrayList<SpaceBlock>();
-			int i = 0;
 			do{
-				System.out.println("Start: " + start.position.getX() + ", " + start.getPosition().getY());
-				++i;
-				System.out.println("adding a block hopefullyt");
 					Position best = null ;
-					for(Path<Position> p : graph.getNode(start.getPosition()).getPaths()){
-						Node<Position> n = graph.getNode(p.getDest());
-						if(isGoal(start)){
-							best = goal;
-						}else if(best == null || f(n) < f(graph.getNode(best))){
-							best = n.getItem();
-							System.out.println(best.getX() + " , " + best.getY());
+					try{
+						System.out.println("num possible positions: " + graph.getNode(start.getPosition()).getPaths().size());
+						for(Path<Position> p : graph.getNode(start.getPosition()).getPaths()){
+							Node<Position> n = graph.getNode(p.getDest());
+							System.out.println("distance: " + f(n));
+							if(isGoal(start)){
+								best = goal;
+							}else if(best == null || f(n) < f(graph.getNode(best))){
+								
+								if(!paths.contains(grid.getBlock(n.getItem()))){
+									best = n.getItem();
+								}
+								
+							}
 						}
+						
+					}catch(Exception e){
+						System.out.println("failed the for loop");
 					}
-					paths.add(grid.getBlock(best));
-					start = grid.getBlock(best);
-			}while(!paths.get(paths.size() - 1).contains(goal) && i < 100 );
+					
+					try{
+						System.out.println(best == null);
+						start = grid.getBlock(best);
+					}catch(Exception e){
+						System.out.println("couldnt change start");
+						System.out.println(e);
+						System.exit(0);
+					}
+					
+					try{
+							paths.add(grid.getBlock(best));
+					}catch(Exception e){
+						System.out.println("couldnt add path");
+						System.exit(0);
+					}
+
+			}while(!paths.get(paths.size() - 1).contains(goal));
 			return paths;
 	}
 	

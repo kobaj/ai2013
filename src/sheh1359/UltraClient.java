@@ -23,7 +23,7 @@ public class UltraClient extends TeamClient {
 	ArrayList<Shadow> newShadows;
 	ArrayList<Shadow> oldShadows;
 	HashMap<Ship, Shadow> currentShadows;
-		
+	int counter = 20;
 
 	public void initialize() {
 		newShadows = new ArrayList<Shadow>();
@@ -39,70 +39,71 @@ public class UltraClient extends TeamClient {
 	
 	// Do a step, given info about the space and the ships on our team
 	public HashMap<String, SpacewarAction> getAction(Toroidal2DPhysics space, ArrayList<Ship> ships) {
-	
+		counter--;
+
 		// One action for every ship,  to be determined in the below loop
 		HashMap<String, SpacewarAction> shipActions = new HashMap<String, SpacewarAction>();
 		for (Ship ship : ships) {
 			
 			SpacewarAction current = ship.getCurrentAction();
+			SpaceGrid s = new SpaceGrid(space);
+			ArrayList<Position> aPaths = new ArrayList<Position>();
 			
-			// What is this ?
-			if (current != null && current.isMovementFinished()) {
+			// dtermine the next action
+			if (ship.getCurrentAction() == null || (current.isMovementFinished() && aPaths.size() == 0)) {
 				oldShadows.add(currentShadows.get(ship));
-			}
-			
-			// We are not currently carrying out an action, make a new one
-			if (current == null || current.isMovementFinished()) {
-
-				/*SpaceGrid s = new SpaceGrid(space);
-				for(ArrayList<SpaceBlock> l : s.getBlocks()){
-					for(SpaceBlock b : l){
-						if(b.isClear()){
-							Shadow shadow = new CircleShadow(3, getTeamColor(), b.getPosition());
-							newShadows.add(shadow);
-						}
-					}
-				}*/
 				
-				try{
-					SpaceGrid s = new SpaceGrid(space);
-					AStarLocation a = new AStarLocation(ship,s,new Position(100,100));
-					ArrayList<SpaceBlock> aPaths = a.getPaths();
-					for(SpaceBlock b : aPaths){
-							Shadow shadow = new CircleShadow(3, getTeamColor(), b.getPosition());
-							newShadows.add(shadow);
-						
-					}
-				}catch(Exception e){
-					System.out.println(e.getStackTrace().toString());
-				}
-
+				
 				Position currentPosition = ship.getPosition();
 
-				// Find a position to move towards.
-				//--------------------------------
-				
-				// "discretize" the map into 400 elements
-				// For now, imagine the ships approximation to one of these points as "state"
-				
-				// Store them all in a tree(or a graph?)
-				
-				// How to rank themm?
-				// First, define the goal as any asteroid worth money
-				
-				Position newGoal = new Position(currentPosition.getX() + 200, currentPosition.getY() +200);
-				//------------------------
-				// End position finding
-				
-				// All boilerplate ?
-				MoveAction newAction = null;
-				newAction = new MoveAction(space, currentPosition, newGoal);
-				Shadow shadow = new CircleShadow(3, getTeamColor(), newGoal);
-				newShadows.add(shadow);
-				currentShadows.put(ship, shadow);
-				shipActions.put(ship.getId(), newAction);
+				try{
+					AdjacencyListGraph<Position> graph = new AdjacencyListGraph<Position>();
+					// populate the graph
+					for(ArrayList<SpaceBlock> row : s.getBlocks()){
+						for(SpaceBlock b : row ){
+							graph.addNode(b.getPosition());
+						}
+					}
+					
+					//set unit cost paths if not occupied
+					for(Node<Position> n : graph.getNodes()){
+						ArrayList<SpaceBlock> adj = s.getAdjacentTo(s.getBlock(n.getItem()));
+						for(SpaceBlock b: adj){
+							if(b.isClear()){
+								graph.addPath(n.getItem(),b.getPosition() , 1);
+							}
+						}
+					}
+
+					
+					AStarTwo a = new AStarTwo(graph,space,s,s.getBlock(ship.getPosition()).getPosition(),new Position(500,500));
+					aPaths = a.getPaths();
+					
+					Position newGoal = aPaths.get(0);
+					MoveAction newAction = new MoveAction(space, currentPosition, newGoal);
+					shipActions.put(ship.getId(), newAction);
+
+					System.out.println("path length:" + aPaths.size());
+					for(Position p : aPaths){
+						Shadow shadow = new CircleShadow(3, getTeamColor(), p);
+						newShadows.add(shadow);
+						currentShadows.put(ship, shadow);
+						System.out.println(p);
+					}
+					
+					
+
+				}catch(Exception e){
+					System.out.println("error");
+				}
 
 			// We are currently carrying out an action, use it again
+			}else if (current.isMovementFinished() || aPaths.size() != 0){
+				aPaths.remove(0);
+				Position newGoal = aPaths.get(0);
+				MoveAction newAction = new MoveAction(space,ship.getPosition(), newGoal);
+				shipActions.put(ship.getId(), newAction);
+				
 			} else {
 				shipActions.put(ship.getId(), ship.getCurrentAction());
 			}
