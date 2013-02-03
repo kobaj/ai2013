@@ -57,6 +57,10 @@ public class Project1Client extends TeamClient
 	
 	final public static int MAX_NUM_NODE_CONNECTIONS = 20;
 	
+	Random random;
+	
+	final private boolean no_draw = true;
+	
 	@Override
 	public void initialize()
 	{
@@ -66,6 +70,8 @@ public class Project1Client extends TeamClient
 		managedShadows = new HashMap<String, ArrayList<Shadow>>();
 		newShadows = new ArrayList<Shadow>();
 		oldShadows = new ArrayList<Shadow>();
+	
+		random = new Random();
 	}
 	
 	@Override
@@ -149,7 +155,7 @@ public class Project1Client extends TeamClient
 					// calculate our matrix
 					//nodes = calculateNodesHalfAsteroids(local_space, ship.getRadius(), ship, true);
 					//nodes = calculateNodesRandom(local_space, ship.getRadius(), ship, random, true);
-					 nodes = calculateNodesGrid(local_space, RES, ship, true);
+					 nodes = calculateNodesGrid(local_space, RES, ship, false);
 					
 					// make all connections
 					matrix_graph = calculateDistanceSetConnections(local_space, ship.getRadius(), nodes, false, MAX_NUM_NODE_CONNECTIONS, NodeConnections.closest);
@@ -821,6 +827,9 @@ public class Project1Client extends TeamClient
 	@Override
 	public ArrayList<Shadow> getNewShadows()
 	{
+		if(no_draw)
+			return null;
+		
 		ArrayList<Shadow> shadows = new ArrayList<Shadow>(newShadows);
 		return shadows;
 	}
@@ -828,6 +837,9 @@ public class Project1Client extends TeamClient
 	@Override
 	public ArrayList<Shadow> getOldShadows()
 	{
+		if(no_draw)
+			return null;
+		
 		if (oldShadows.size() > 0)
 		{
 			ArrayList<Shadow> shadows = new ArrayList<Shadow>(oldShadows);
