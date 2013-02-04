@@ -905,7 +905,7 @@ public class Project1Client extends TeamClient
 	
 	private AdjacencyMatrixGraph calculateAllConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, Ship ship)
 	{
-		return calculateSetConnections(space, min_distance, nodes, output, 1000, ship);
+		return calculateSetConnections(space, min_distance, nodes, output, Integer.MAX_VALUE, ship);
 	}
 	
 	private Base getMyBase(Toroidal2DPhysics space, Ship ship)
