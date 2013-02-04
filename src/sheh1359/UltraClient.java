@@ -156,9 +156,35 @@ public class UltraClient extends TeamClient {
 	
 				// The ship has enough money to take back
 				}else{
+					
+						// first assume we're going to take the money back
+						// and set the finalGoal to the base
 						goalType = "money";						
 						finalGoal = base.getPosition();
 						System.out.println("heading to base");
+					
+						// then check for asteroids that are between the
+						// ship and the base. That is, asteroids where the 
+						// distance between the ship and the asteroid is less 
+						// than the distance between the ship and the base and
+						// also the distance between the asteroid and the base 
+						// is less than the distance between the ship and the base.
+						// If they exist, change the finalGoal
+						ArrayList<Asteroid> as = space.getAsteroids();
+						Asteroid best = null ;
+						for(Asteroid a : as){
+							double shipToAsteroid = space.findShortestDistance(ship.getPosition(), a.getPosition());
+							double shipToBase = space.findShortestDistance(ship.getPosition(), base.getPosition());
+							double asteroidToBase = space.findShortestDistance(a.getPosition(), base.getPosition());
+							if((shipToAsteroid < shipToBase) && (asteroidToBase < shipToBase) && a.getMoney() > 0){
+								// set control variables
+								goalType = "asteroid";
+								moneyGoal = ship.getMoney() + a.getMoney();
+								finalGoal = a.getPosition();
+								System.out.println("stopping on the way");
+							}
+						}
+						
 				}
 				
 				// indicate the final goal

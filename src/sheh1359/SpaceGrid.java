@@ -191,7 +191,7 @@ class SpaceBlock{
 	}
 	
 	public boolean isClear(){
-		int radius = (int) getCircumRadius();
+		int radius = (int) (getCircumRadius()*0.9);
 		Position p = position ;
 		
 		return space.isLocationFree(p, radius);
