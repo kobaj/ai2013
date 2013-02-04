@@ -85,8 +85,13 @@ public class UltraClient extends TeamClient {
 			if(stuckCounter.get(ship) == 0){
 				stuckNow.put(ship,ship.getPosition());
 				if(space.findShortestDistance(stuckNow.get(ship), stuckStart.get(ship)) < 10){
-					finalGoal = null;
+					
+					// get a new random goal in the area.
+					finalGoal = space.getRandomFreeLocationInRegion(new Random(), 32, (int)ship.getPosition().getX(), (int)ship.getPosition().getY(), 256);
 					System.out.println("I'm stuck. Trying a different goal...");
+					
+					// set control variables
+					goalType = "asteroid";
 				}
 				stuckStart.put(ship, ship.getPosition());
 				stuckCounter.put(ship, 80);

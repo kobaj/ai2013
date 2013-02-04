@@ -80,7 +80,13 @@ public class AStarTwo{
 			}
 		}
 
-		while(true){
+		// this was originally a while true.
+		// every once in a while it went forever
+		// so I gave it this large limit
+		int i = 0;
+		while(i < 5000){
+			++i;
+			
 			if(fringe.isEmpty()){
 				return null;
 			}
@@ -117,6 +123,7 @@ public class AStarTwo{
 			}
 			
 		}
+		return null; // now this will happen where it used to hang.
 		
 	}
 	
