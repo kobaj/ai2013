@@ -5,7 +5,7 @@ import java.util.Formatter;
 
 import spacewar2.utilities.Position;
 
-class Node<T>
+class Node
 {
 	public static enum NodeType { regular, start, goal};
 	
@@ -14,9 +14,8 @@ class Node<T>
 	public final int matrix_id;
 	public final double hueristic_distance;
 	
-	public Object item;
 	public double root_to_n_distance = 0;
-	public Node<T> parent;
+	public Node parent;
 	
 	public Node(Position position, int matrix_id, NodeType node_type, double hueristic_distance)
 	{
@@ -31,27 +30,26 @@ class Node<T>
 		return hueristic_distance + root_to_n_distance;
 	}
 	
-	public ArrayList<Node<T>> getPathToRoot()
+	public ArrayList<Node> getPathToRoot()
 	{
 		if(parent == null)
 		{
 			 // System.out.println("this is parent.");
-			 ArrayList<Node<T>> root =  new ArrayList<Node<T>>();
+			 ArrayList<Node> root =  new ArrayList<Node>();
 			 root.add(this);
 			 return root;
 		}
 		
 		//System.out.println("this: " + String.valueOf(this.matrix_id) + " parent: " + parent.matrix_id);
-		ArrayList<Node<T>> current_path = parent.getPathToRoot();
+		ArrayList<Node> current_path = parent.getPathToRoot();
 		current_path.add(this);
 		return current_path;
 	}
 	
-	public Node<T> copy()
+	public Node copy()
 	{
-		Node<T> returnable = new Node<T>(position.deepCopy(), matrix_id, node_type, hueristic_distance);
+		Node returnable = new Node(position.deepCopy(), matrix_id, node_type, hueristic_distance);
 		returnable.parent = this.parent;
-		returnable.item = this.item;
 		returnable.root_to_n_distance = this.root_to_n_distance;
 		
 		return returnable;

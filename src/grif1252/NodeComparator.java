@@ -2,11 +2,11 @@ package grif1252;
 
 import java.util.Comparator;
 
-public class NodeComparator<T> implements Comparator<Node<T>>
+public class NodeComparator implements Comparator<Node>
 {
 
 	@Override
-	public int compare(Node<T> o1, Node<T> o2)
+	public int compare(Node o1, Node o2)
 	{
 		if(o1.fn() < o2.fn())
 			return -1;

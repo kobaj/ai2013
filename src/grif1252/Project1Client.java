@@ -41,15 +41,16 @@ public class Project1Client extends TeamClient
 	ArrayList<Shadow> newShadows;
 	ArrayList<Shadow> oldShadows;
 	
-	final public static int SUBGOAL_DISTANCE = 40;
+	final public static int SUBGOAL_DISTANCE = 30;
 	
 	// vary to determine which to pick (asteroid, beacon, or money).
 	final public static double ASTEROID_SIZE = 700;
-	final public static double MONEY_RETURN = 100;
+	final public static double MONEY_RETURN = 150;
 	final public static double BEACON_GET = 900;
 	
-	final public static int RANDOM_LOCATION = 200;
 	public static int MAX_RANDOM_NODES = 10;
+	
+	final public static int SQUARE_PADDING = 150;
 	
 	final public static int MAX_ITERATIONS = 20;
 	HashMap<Ship, Integer> current_iterations;
@@ -62,8 +63,10 @@ public class Project1Client extends TeamClient
 	
 	Random random;
 	
-	final private boolean no_draw = true;
-	final private boolean global_output = true;
+	final private boolean no_draw = false;
+	final private boolean global_output = false;
+	
+	private long time;
 	
 	@Override
 	public void initialize()
@@ -107,6 +110,8 @@ public class Project1Client extends TeamClient
 	@Override
 	public HashMap<String, SpacewarAction> getAction(Toroidal2DPhysics space, ArrayList<Ship> ships)
 	{
+		time = System.currentTimeMillis();
+		
 		// switch shadows
 		switchShadows();
 		
@@ -124,9 +129,11 @@ public class Project1Client extends TeamClient
 			
 			// see if the map contains our goal anymore
 			String arc_goal = ship_goals.get(ship);
-			boolean goal_exists = false;
+			boolean goal_exists = true;
 			if (arc_goal != null)
 			{
+				goal_exists = false;
+				
 				for (Asteroid as : local_space.getAsteroids())
 					if (as.getPosition().toString().equals(arc_goal))
 					{
@@ -138,9 +145,15 @@ public class Project1Client extends TeamClient
 					{
 						goal_exists = true;
 					}
+				
+				for (Base ba : local_space.getBases())
+					if (ba.getPosition().toString().equals(arc_goal))
+					{
+						goal_exists = true;
+					}
 			}
 			
-			// we're close enough. dont have to be perfect.
+			// we're close enough. doesnt have to be perfect.
 			Position sub_goal = local_goals.get(ship);
 			if (sub_goal != null)
 				if (local_space.findShortestDistance(ship.getPosition(), sub_goal) < Project1Client.SUBGOAL_DISTANCE)
@@ -154,61 +167,104 @@ public class Project1Client extends TeamClient
 			{
 				current_iterations.put(ship, MAX_ITERATIONS);
 				
-				ArrayList<Node<Position>> nodes; // all nodes
-				AdjacencyMatrixGraph<Position> matrix_graph; // all connections between all nodes
-				ArrayList<Node<Position>> fast_path; // fastest path through nodes
+				Toroidal2DPhysics sub_local_space = local_space.deepClone();
 				
-				int i = 0;
+				AdjacencyMatrixGraph matrix_graph = null; // all connections between all nodes
+				ArrayList<Node> fast_path = null; // fastest path through nodes
+				
+				// list of forbidden goals
+				ArrayList<SpacewarObject> out_goal = new ArrayList<SpacewarObject>();
+				SpacewarObject goal = null;
+				
+				int e = 1;
+				int i = 1;
+				boolean breakout = false;
+				
 				while (true)
 				{
-					// calculate our matrix
-					// nodes = calculateNodesHalfAsteroids(local_space, ship.getRadius(), ship, true);
-					// nodes = calculateNodesRandom(local_space, ship.getRadius(), ship, random, true);
-					nodes = calculateNodesGrid(local_space, RES, ship, global_output);
+					ArrayList<Node> outer_nodes = new ArrayList<Node>(); // all nodes
 					
-					// make all connections
-					matrix_graph = calculateDistanceSetConnections(local_space, ship.getRadius(), nodes, global_output, MAX_NUM_NODE_CONNECTIONS, NodeConnections.closest, ship);
-					// matrix_graph = calculateSetConnections(local_space, ship.getRadius(), nodes, false, MAX_NUM_NODE_CONNECTIONS);
-					// matrix_graph = calculateAllConnections(local_space, ship.getRadius(), nodes, false);
+					goal = addStartAndGoal(sub_local_space, ship, outer_nodes, false, out_goal);
 					
-					// store our goal
-					if (Asteroid.class.isAssignableFrom(matrix_graph.getNodes().get(0).item.getClass()))
-						ship_goals.put(ship, Asteroid.class.cast(matrix_graph.getNodes().get(0).item).getPosition().toString());
-					
-					// find the fastest way through it
-					fast_path = AStar(local_space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
-					
-					// move on
-					i++;
-					if (i > 10 || fast_path != null)
+					if (goal == null)
 						break;
-					else
+					
+					for (; e < 3; e++)
 					{
-						// System.out.println("No path found, retrying: " + i);
-						MAX_RANDOM_NODES++;
+						ArrayList<Node> nodes = new ArrayList<Node>();
+						for (Node n : outer_nodes)
+							nodes.add(n.copy());
+						
+						// calculate our matrix
+						// calculateNodesHalfAsteroids(local_space, ship.getRadius(), ship, true);
+						// calculateNodesRandom(local_space, ship.getRadius(), ship, random, true);
+						calculateNodesGrid(sub_local_space, RES, Project1Client.SQUARE_PADDING, ship, false, nodes);
+						// calculateNodesGridDense(space, RES, Project1Client.SQUARE_PADDING, ship, false, nodes);
+						
+						// make all connections
+						matrix_graph = calculateDistanceSetConnections(sub_local_space, ship.getRadius(), nodes, false, (int) (MAX_NUM_NODE_CONNECTIONS), NodeConnections.closest, ship);
+						// matrix_graph = calculateSetConnections(local_space, ship.getRadius(), nodes, false, MAX_NUM_NODE_CONNECTIONS);
+						// matrix_graph = calculateAllConnections(local_space, ship.getRadius(), nodes, false);
+						
+						// find the fastest way through it
+						fast_path = AStar(sub_local_space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
+						
+						// move on
+						if (fast_path != null)
+						{
+							breakout = true;
+						}
+						
+						if (breakout)
+							break;
+						
 					}
+					
+					if (breakout)
+						break;
+					
 				}
+				
+				if (global_output)
+					System.out.println("LOOP ran for " + e * i + " times. (" + e + ", " + i + ")");
 				
 				// uncomment to draw lines
 				ArrayList<Shadow> node_shadows = new ArrayList<Shadow>();
-				// for(Node<Position> n: nodes)
+				// for(Node n: nodes)
 				// drawNodesConnections(space, n, n, ship.getRadius(), node_shadows); // draw all nodes
 				// drawLines(space, matrix_graph, 0, node_shadows); // draw all the lines connecting all nodes
-				drawSolution(local_space, fast_path, ship.getRadius(), node_shadows); // draw the shortest path
+				// drawSolution(local_space, fast_path, ship.getRadius(), node_shadows); // draw the shortest path
 				managedShadows.put(ship.getId() + "sources", node_shadows);
 				
 				// make the goals
 				Position currentPosition = ship.getPosition();
-				Position newGoal = (fast_path != null && fast_path.get(1) != null ? fast_path.get(1).position : local_space.getRandomFreeLocation(random, ship.getRadius())); // get next movement
-				local_goals.put(ship, newGoal);
+				Position newGoal = null;
+				if (fast_path != null && fast_path.get(1) != null)
+				{
+					newGoal = fast_path.get(1).position;
+					
+					// store our goal
+					if (goal != null)
+						ship_goals.put(ship, goal.getPosition().toString());
+					
+					if (fast_path.get(1).node_type != NodeType.goal)
+						local_goals.put(ship, newGoal);
+					else
+						local_goals.remove(ship);
+				}
+				else
+				{
+					if (global_output)
+						System.out.println("********Could not find path, random chosen*********");
+					newGoal = local_space.getRandomFreeLocation(random, ship.getRadius()); // get next movement
+					
+					// remove our goal
+					ship_goals.remove(ship);
+					local_goals.remove(ship);
+				}
 				
-				if (SpacewarObject.class.isAssignableFrom(matrix_graph.getNodes().get(0).item.getClass()) && !Base.class.isAssignableFrom(matrix_graph.getNodes().get(0).item.getClass()))
-					local_space.removeObject((SpacewarObject) matrix_graph.getNodes().get(0).item);
-				
-				// SpacewarAction newAction = new ConstantMoveAction(currentPosition, newGoal);//MoveAction(space, currentPosition, newGoal);
 				SpacewarAction newAction = new MoveAction(local_space, currentPosition, newGoal);
 				
-				// System.out.println("Ship is at " + currentPosition + " and goal is " + newGoal);
 				Shadow shadow = new CircleShadow(3, getTeamColor(), newGoal);
 				ArrayList<Shadow> goal_shadow = new ArrayList<Shadow>();
 				goal_shadow.add(shadow);
@@ -218,7 +274,7 @@ public class Project1Client extends TeamClient
 				actions.put(ship.getId(), newAction);
 				
 				if (global_output)
-					System.out.println("Finished with ship");
+					System.out.println("Finished with ship: " + ship.toString());
 				System.gc();
 			}
 			else
@@ -228,22 +284,24 @@ public class Project1Client extends TeamClient
 			}
 		}
 		
+		if (global_output)
+			System.out.println("TimeSpent in Client: " + (System.currentTimeMillis() - time));
 		return actions;
 	}
 	
-	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node<Position>> nodes, double min_radius, ArrayList<Shadow> node_shadows)
+	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node> nodes, double min_radius, ArrayList<Shadow> node_shadows)
 	{
 		if (nodes == null)
 			return;
 		
-		for (Node<Position> n : nodes)
+		for (Node n : nodes)
 		{
 			if (n.parent != null)
 				drawNodesConnections(space, n.parent, n, min_radius, node_shadows);
 		}
 	}
 	
-	private void drawNodesConnections(Toroidal2DPhysics space, Node<Position> a, Node<Position> b, double min_radius, ArrayList<Shadow> node_shadows)
+	private void drawNodesConnections(Toroidal2DPhysics space, Node a, Node b, double min_radius, ArrayList<Shadow> node_shadows)
 	{
 		node_shadows.add(new CircleShadow(1, Color.orange, a.position));
 		
@@ -264,30 +322,24 @@ public class Project1Client extends TeamClient
 		}
 	}
 	
-	private void drawLines(Toroidal2DPhysics space, AdjacencyMatrixGraph<Position> temp, double min_radius, ArrayList<Shadow> node_shadows)
+	private void drawLines(Toroidal2DPhysics space, AdjacencyMatrixGraph temp, double min_radius, ArrayList<Shadow> node_shadows)
 	{
-		ArrayList<Node<Position>> nodes = temp.getNodes();
+		ArrayList<Node> nodes = temp.getNodes();
 		
-		ArrayList<Node<Position>> visited_nodes = new ArrayList<Node<Position>>();
+		ArrayList<Node> visited_nodes = new ArrayList<Node>();
 		
-		int e = 0;
-		
-		for (Node<Position> n1 : nodes)
+		for (Node n1 : nodes)
 		{
-			for (Node<Position> n2 : nodes)
-			{
+			for (Node n2 : nodes)
 				if (!n1.equals(n2) && !visited_nodes.contains(n2) && temp.getConnected(n1, n2))
-				{
 					drawNodesConnections(space, n1, n2, min_radius, node_shadows);
-					e++;
-				}
-			}
+			
 			visited_nodes.add(n1);
 		}
 		
 	}
 	
-	private ArrayList<Node<Position>> AStar(Toroidal2DPhysics space, AdjacencyMatrixGraph<Position> graph, Node<Position> start, boolean output)
+	private ArrayList<Node> AStar(Toroidal2DPhysics space, AdjacencyMatrixGraph graph, Node start, boolean output)
 	{
 		// have to stick the graph into a tree starting from start
 		
@@ -298,15 +350,15 @@ public class Project1Client extends TeamClient
 			System.out.println("******************************************************");
 		}
 		
-		ArrayList<Node<Position>> closed_visited = new ArrayList<Node<Position>>();
+		ArrayList<Node> closed_visited = new ArrayList<Node>();
 		closed_visited.add(start);
-		PriorityQueue<Node<Position>> fringe = new PriorityQueue<Node<Position>>(10, new NodeComparator<Position>());
+		PriorityQueue<Node> fringe = new PriorityQueue<Node>(10, new NodeComparator());
 		
 		if (output)
 			System.out.println("starting at: " + start.toString());
 		
-		ArrayList<Node<Position>> children = graph.getChildren(start);
-		for (Node<Position> child : children)
+		ArrayList<Node> children = graph.getChildren(start);
+		for (Node child : children)
 		{
 			child.root_to_n_distance = space.findShortestDistance(start.position, child.position);
 			fringe.add(child.copy());
@@ -322,7 +374,7 @@ public class Project1Client extends TeamClient
 			if (fringe.isEmpty())
 				return null;
 			
-			Node<Position> next = fringe.poll();
+			Node next = fringe.poll();
 			
 			if (output)
 				System.out.println("next is at: " + next.toString());
@@ -336,8 +388,8 @@ public class Project1Client extends TeamClient
 			else
 			{
 				closed_visited.add(next.copy());
-				ArrayList<Node<Position>> sub_children = graph.getChildren(next);
-				for (Node<Position> child : sub_children)
+				ArrayList<Node> sub_children = graph.getChildren(next);
+				for (Node child : sub_children)
 				{
 					child.root_to_n_distance = next.root_to_n_distance + space.findShortestDistance(child.position, next.position);
 					
@@ -347,7 +399,7 @@ public class Project1Client extends TeamClient
 					boolean inserted = false;
 					
 					// or visited
-					for (Node<Position> p : closed_visited)
+					for (Node p : closed_visited)
 					{
 						if (p.matrix_id == child.matrix_id)
 						{
@@ -360,7 +412,7 @@ public class Project1Client extends TeamClient
 					
 					// already there
 					if (!inserted)
-						for (Node<Position> p : fringe)
+						for (Node p : fringe)
 							if (p.matrix_id == child.matrix_id)
 							{
 								if (output)
@@ -387,7 +439,67 @@ public class Project1Client extends TeamClient
 		}
 	}
 	
-	private ArrayList<Node<Position>> calculateNodesGrid(Toroidal2DPhysics space, double divider, Ship ship, boolean output)
+	private void calculateNodesGridDense_helper(Toroidal2DPhysics space, int ship_min_x, int ship_max_x, int ship_min_y, int ship_max_y, int divider, ArrayList<Node> nodes, Ship ship)
+	{
+		int divider_x = (int) (ship_max_x / divider);
+		int divider_y = (int) (ship_max_y / divider);
+		
+		Position goal = nodes.get(0).position;
+		
+		int e = nodes.size();
+		
+		for (int i = ship_min_x; i < ship_max_x; i += divider_x)
+			for (int j = ship_min_y; j < ship_max_y; j += divider_y)
+			{
+				Position position = new Position(i, j);
+				
+				// find the distance to player
+				// dont add it if the player is really close
+				if (space.findShortestDistance(position, ship.getPosition()) > SUBGOAL_DISTANCE)
+				{
+					nodes.add(new Node(position, e, NodeType.regular, space.findShortestDistance(position, goal)));
+					e++;
+				}
+			}
+	}
+	
+	private void calculateNodesGridDense(Toroidal2DPhysics space, double divider, int padding, Ship ship, boolean output, ArrayList<Node> nodes)
+	{
+		if (output)
+		{
+			System.out.println("******************************************************");
+			System.out.println("*          Calculating Node Grid DENSE               *");
+			System.out.println("******************************************************");
+		}
+		
+		// make a dense grid around the ship
+		int ship_min_x = (int) (ship.getPosition().getX() - padding);
+		int ship_max_x = (int) (ship.getPosition().getX() + padding);
+		int ship_min_y = (int) (ship.getPosition().getY() - padding);
+		int ship_max_y = (int) (ship.getPosition().getY() + padding);
+		
+		calculateNodesGridDense_helper(space, ship_min_x, ship_max_x, ship_min_y, ship_max_y, (int) divider / 2, nodes, ship);
+		
+		Position goal = nodes.get(0).position;
+		
+		// make a dense grid around the goal
+		int goal_min_x = (int) (goal.getX() - padding);
+		int goal_max_x = (int) (goal.getX() + padding);
+		int goal_min_y = (int) (goal.getY() - padding);
+		int goal_max_y = (int) (goal.getY() + padding);
+		
+		calculateNodesGridDense_helper(space, goal_min_x, goal_max_x, goal_min_y, goal_max_y, (int) divider / 2, nodes, ship);
+		
+		// default
+		int min_x = 0;
+		int max_x = Project1Client.X_RES;
+		int min_y = 0;
+		int max_y = Project1Client.Y_RES;
+		
+		calculateNodesGridDense_helper(space, min_x, max_x, min_y, max_y, (int) divider, nodes, ship);
+	}
+	
+	private void calculateNodesGrid(Toroidal2DPhysics space, double divider, int padding, Ship ship, boolean output, ArrayList<Node> nodes)
 	{
 		if (output)
 		{
@@ -396,11 +508,7 @@ public class Project1Client extends TeamClient
 			System.out.println("******************************************************");
 		}
 		
-		ArrayList<Node<Position>> nodes = new ArrayList<Node<Position>>();
-		
-		Position goal = addStartAndGoal(space, ship, nodes, output);
-		
-		int e = 2;
+		Position goal = nodes.get(0).position;
 		
 		// default
 		int min_x = 0;
@@ -408,10 +516,15 @@ public class Project1Client extends TeamClient
 		int min_y = 0;
 		int max_y = Project1Client.Y_RES;
 		
-		int padding = 100;
+		Vector2D smallest_distance = space.findShortestDistanceVector(ship.getPosition(), goal);
+		double radian = smallest_distance.getAngle();
+		double degree = Math.toDegrees(radian);
+		
+		if (output)
+			System.out.println("Radian: " + radian + " degree: " + Math.toDegrees(radian));
 		
 		// focus in the search just a little bit
-		if (ship.getPosition().getX() < goal.getX())
+		if (-90 < degree && degree < 90)
 		{
 			min_x = (int) (ship.getPosition().getX() - padding);
 			max_x = (int) (goal.getX() + padding);
@@ -422,7 +535,7 @@ public class Project1Client extends TeamClient
 			min_x = (int) (goal.getX() - padding);
 		}
 		
-		if (ship.getPosition().getY() < goal.getY())
+		if (180 > degree && degree > 0)
 		{
 			min_y = (int) (ship.getPosition().getY() - padding);
 			max_y = (int) (goal.getY() + padding);
@@ -436,6 +549,7 @@ public class Project1Client extends TeamClient
 		int divider_x = (int) (max_x / divider);
 		int divider_y = (int) (max_y / divider);
 		
+		int e = nodes.size();
 		for (int i = min_x; i < max_x; i += divider_x)
 			for (int j = min_y; j < max_y; j += divider_y)
 			{
@@ -444,15 +558,14 @@ public class Project1Client extends TeamClient
 				// find the distance to player
 				// dont add it if the player is really close
 				if (space.findShortestDistance(position, ship.getPosition()) > SUBGOAL_DISTANCE)
-					nodes.add(new Node<Position>(position, e, NodeType.regular, space.findShortestDistance(position, goal)));
-				
-				e++;
+				{
+					nodes.add(new Node(position, e, NodeType.regular, space.findShortestDistance(position, goal)));
+					e++;
+				}
 			}
-		
-		return nodes;
 	}
 	
-	private ArrayList<Node<Position>> calculateNodesRandom(Toroidal2DPhysics space, double min_distance, Ship ship, Random random, boolean output)
+	private ArrayList<Node> calculateNodesRandom(Toroidal2DPhysics space, double min_distance, Ship ship, Random random, boolean output, ArrayList<Node> nodes)
 	{
 		if (output)
 		{
@@ -461,21 +574,23 @@ public class Project1Client extends TeamClient
 			System.out.println("******************************************************");
 		}
 		
-		ArrayList<Node<Position>> nodes = new ArrayList<Node<Position>>();
+		Position goal = nodes.get(0).position;
 		
-		Position goal = addStartAndGoal(space, ship, nodes, output);
-		
-		for (int i = 2; i < MAX_RANDOM_NODES; i++)
+		int i = nodes.size();
+		for (; i < MAX_RANDOM_NODES;)
 		{
 			Position open = space.getRandomFreeLocation(random, (int) min_distance);
 			if (space.findShortestDistance(open, ship.getPosition()) > SUBGOAL_DISTANCE)
-				nodes.add(new Node<Position>(open, i, NodeType.regular, space.findShortestDistance(open, goal)));
+			{
+				nodes.add(new Node(open, i, NodeType.regular, space.findShortestDistance(open, goal)));
+				i++;
+			}
 		}
 		
 		return nodes;
 	}
 	
-	private ArrayList<Node<Position>> calculateNodesHalfAsteroids(Toroidal2DPhysics space, double min_distance, Ship ship, boolean output)
+	private ArrayList<Node> calculateNodesHalfAsteroids(Toroidal2DPhysics space, double min_distance, Ship ship, boolean output, ArrayList<Node> nodes)
 	{
 		if (output)
 		{
@@ -485,13 +600,11 @@ public class Project1Client extends TeamClient
 		}
 		
 		ArrayList<Asteroid> asteroids = space.getAsteroids();
-		ArrayList<Node<Position>> nodes = new ArrayList<Node<Position>>();
-		
 		ArrayList<Asteroid> visited_asteroids = new ArrayList<Asteroid>();
 		
-		Position goal = addStartAndGoal(space, ship, nodes, output);
+		Position goal = nodes.get(0).position;
 		
-		int i = 2;
+		int i = nodes.size();
 		for (Asteroid a1 : asteroids)
 		{
 			for (Asteroid a2 : asteroids)
@@ -507,7 +620,7 @@ public class Project1Client extends TeamClient
 							
 							if (space.findShortestDistance(this_position, ship.getPosition()) > SUBGOAL_DISTANCE)
 							{
-								Node<Position> potential_location = new Node<Position>(this_position, i, NodeType.regular, space.findShortestDistance(this_position, goal));
+								Node potential_location = new Node(this_position, i, NodeType.regular, space.findShortestDistance(this_position, goal));
 								nodes.add(potential_location);
 								i++;
 							}
@@ -520,7 +633,7 @@ public class Project1Client extends TeamClient
 		return nodes;
 	}
 	
-	private Position addStartAndGoal(Toroidal2DPhysics space, Ship ship, ArrayList<Node<Position>> nodes, boolean output)
+	private SpacewarObject addStartAndGoal(Toroidal2DPhysics space, Ship ship, ArrayList<Node> nodes, boolean output, ArrayList<SpacewarObject> out_goal)
 	{
 		// we add two nodes, one for start, one for destination
 		
@@ -535,9 +648,9 @@ public class Project1Client extends TeamClient
 		
 		// this is our intelligent search system
 		Asteroid goal_max_asteroid = getMaxAsteroid(space);
-		ArrayList<Asteroid> goal_close_asteroids = getClosestAsteroids(space, ship, 3);
-		SpacewarObject base = getMyBase(space, ship);
-		SpacewarObject goal_close_beacon = getClosestBeacon(space, ship);
+		ArrayList<Asteroid> goal_close_asteroids = getClosestAsteroids(space, ship, 6);
+		Base base = getMyBase(space, ship);
+		Beacon goal_close_beacon = getClosestBeacon(space, ship);
 		
 		// we want things to have lower priority depending on things
 		// like how much money we are carrying and how much energy we have left
@@ -629,6 +742,11 @@ public class Project1Client extends TeamClient
 					System.out.println("picking the asteroid " + closest_goal + " money: " + ((Asteroid) closest_object).getMoney());
 				goal = closest_object;
 			}
+			
+			for (SpacewarObject forbidden : out_goal)
+				if (goal != null)
+					if (goal.getPosition().equals(forbidden.getPosition()))
+						goal = null;
 		}
 		
 		if (output)
@@ -637,20 +755,16 @@ public class Project1Client extends TeamClient
 		// and just a catch all
 		if (goal == null)
 		{
-			if (output)
-				System.out.println("Picked nothing. way to go");
-			
-			goal = new Beacon(space.getRandomFreeLocationInRegion(random, ship.getRadius(), (int) ship.getPosition().getX(), (int) ship.getPosition().getY(), RANDOM_LOCATION), random.nextInt());
+			return null;
 		}
 		
-		Node<Position> goal_node = new Node<Position>(goal.getPosition(), i, NodeType.goal, 0);
-		goal_node.item = goal;
+		out_goal.add(goal);
+		Node goal_node = new Node(goal.getPosition(), i, NodeType.goal, 0);
 		nodes.add(goal_node);
 		i++;
 		
 		// next
-		Node<Position> start_node = new Node<Position>(ship.getPosition(), i, NodeType.start, space.findShortestDistance(ship.getPosition(), goal.getPosition()));
-		start_node.item = ship;
+		Node start_node = new Node(ship.getPosition(), i, NodeType.start, space.findShortestDistance(ship.getPosition(), goal.getPosition()));
 		nodes.add(start_node);
 		i++;
 		
@@ -659,12 +773,14 @@ public class Project1Client extends TeamClient
 		if (!Base.class.isAssignableFrom(goal.getClass()))
 			space.removeObject(goal);
 		
-		return goal.getPosition();
+		return goal;
 	}
 	
-	private AdjacencyMatrixGraph<Position> calculateDistanceSetConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node<Position>> nodes, boolean output, int connections,
-			NodeConnections type, Ship ship)
+	private AdjacencyMatrixGraph calculateDistanceSetConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, int connections, NodeConnections type, Ship ship)
 	{
+		if (connections < 2)
+			connections = 2;
+		
 		if (output)
 		{
 			System.out.println("******************************************************");
@@ -674,43 +790,52 @@ public class Project1Client extends TeamClient
 		
 		// remove beacons as they are actually good
 		Toroidal2DPhysics local_space = space.deepClone();
-		local_space.removeObject(getMyBase(local_space, ship));
-		// local_space.getBases().clear();
-		local_space.getBeacons().clear();
+		
+		Base my_base = getMyBase(local_space, ship);
+		if (nodes.get(0).position.equals(my_base.getPosition()))
+			local_space.removeObject(my_base);
+		
+		ArrayList<Beacon> beacons = local_space.getBeacons();
+		for (int i = beacons.size() - 1; i >= 0; i--)
+			local_space.removeObject(beacons.get(i));
 		
 		ArrayList<Asteroid> asteroids = local_space.getAsteroids();
 		for (int i = asteroids.size() - 1; i >= 0; i--)
 			if (asteroids.get(i).isMineable())
 				local_space.removeObject(asteroids.get(i));
 		
-		ArrayList<Node<Position>> visited_nodes = new ArrayList<Node<Position>>();
+		ArrayList<Node> visited_nodes = new ArrayList<Node>();
 		
 		// now we have our nodes, lets see which ones touch
-		AdjacencyMatrixGraph<Position> my_graph = new AdjacencyMatrixGraph<Position>(nodes.size() + 1);
+		AdjacencyMatrixGraph my_graph = new AdjacencyMatrixGraph(nodes.size() + 1);
 		my_graph.storeNodes(nodes);
 		
 		// walk through the nodes and find out which ones can touch
-		for (Node<Position> n1 : nodes)
+		for (Node n1 : nodes)
 		{
 			// before immediately walking over ALL nodes
 			// we can only search for the x closest amount
 			// and walk through them much more efficiently.
-			PriorityQueue<Double> distances = new PriorityQueue<Double>(nodes.size());
-			HashMap<Double, Node<Position>> distance_relations = new HashMap<Double, Node<Position>>();
+			PriorityQueue<Double> distances = new PriorityQueue<Double>(nodes.size() + 1);
+			HashMap<Double, Node> distance_relations = new HashMap<Double, Node>();
 			
 			int y = 0;
-			for (Node<Position> n2 : nodes)
+			for (Node n2 : nodes)
 				if (n1.matrix_id != n2.matrix_id && !visited_nodes.contains(n2))
 				{
 					double distance = local_space.findShortestDistance(n1.position, n2.position);
-					
-					if (output)
-						System.out.println("Finding shortest distances: " + distance);
 					
 					if (type == NodeConnections.furthest)
 						distance = 1.0 / distance;
 					else if (type == NodeConnections.random)
 						distance = random.nextDouble();
+					
+					if (output)
+						System.out.println("Finding distances: " + distance);
+					
+					// we dont want duplicates
+					while (distances.contains(distance))
+						distance += 1;
 					
 					distances.add(distance);
 					distance_relations.put(distance, n2);
@@ -720,57 +845,51 @@ public class Project1Client extends TeamClient
 			if (connections > y)
 				connections = y;
 			
-			double[] count_distances = new double[connections];
-			for (int i = 0; i < connections; i++)
-				count_distances[i] = distances.poll();
-			
 			// now walk through the closest amount q we have found.
-			for (int q = 0; q < connections; q++)
+			for (int q = 0; q < connections && !distances.isEmpty(); q++)
 			{
-				Node<Position> n2 = distance_relations.get(count_distances[q]);
+				Node n2 = distance_relations.get(distances.poll());
 				
-				if (n1.matrix_id != n2.matrix_id && !visited_nodes.contains(n2))
+				double distance = local_space.findShortestDistance(n1.position, n2.position);
+				
+				if (output)
 				{
-					double distance = local_space.findShortestDistance(n1.position, n2.position);
+					System.out.println("Node A: " + n1.matrix_id);
+					System.out.println("Node B: " + n2.matrix_id);
+					System.out.println("Distance: " + distance);
+				}
+				
+				// see if there is anything between n1 and n2 by lerping from
+				// n1 to n2, checking positions inbetween.
+				// ideally this will be replaced with a much better circle in
+				// rectangle collision check one day.
+				int divisors = (int) Math.ceil(distance / min_distance);
+				boolean collision = false;
+				
+				for (int j = 1; j < divisors - 1; j++)
+				{
+					double next_x = lerp(0, divisors, j, n1.position.getX(), n2.position.getX());
+					double next_y = lerp(0, divisors, j, n1.position.getY(), n2.position.getY());
 					
-					if (output)
+					if (!local_space.isLocationFree(new Position(next_x, next_y), (int) (min_distance * 2.0)))
 					{
-						System.out.println("Node A: " + n1.matrix_id);
-						System.out.println("Node B: " + n2.matrix_id);
-						System.out.println("Distance: " + distance);
-					}
-					
-					// see if there is anything between n1 and n2 by lerping from
-					// n1 to n2, checking positions inbetween.
-					// ideally this will be replaced with a much better circle in
-					// rectangle collision check one day.
-					int divisors = (int) Math.ceil(distance / min_distance * 2.0);
-					boolean collision = false;
-					
-					for (int j = 0; j < divisors; j++)
-					{
-						double next_x = lerp(0, divisors, j, n1.position.getX(), n2.position.getX());
-						double next_y = lerp(0, divisors, j, n1.position.getY(), n2.position.getY());
-						
-						if (!local_space.isLocationFree(new Position(next_x, next_y), (int) (min_distance * 2.0)))
-						{
-							if (output)
-								System.out.println("                                                                  Collision");
-							
-							collision = true;
-							break;
-						}
-					}
-					
-					// set if we can go between these nodes
-					if (!collision)
-					{
-						my_graph.setConnected(n1, n2, distance);
-						
 						if (output)
-							System.out.println("                                                                  Stored: " + distance);
+							System.out.println("                                                                  Collision");
+						
+						collision = true;
+						break;
 					}
 				}
+				
+				// set if we can go between these nodes
+				if (!collision)
+				{
+					my_graph.setConnected(n1, n2, distance);
+					
+					if (output)
+						System.out.println("                                                                  Stored: " + distance);
+				}
+				
 			}
 			
 			visited_nodes.add(n1);
@@ -779,14 +898,14 @@ public class Project1Client extends TeamClient
 		return my_graph;
 	}
 	
-	private AdjacencyMatrixGraph<Position> calculateSetConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node<Position>> nodes, boolean output, int connections, Ship ship)
+	private AdjacencyMatrixGraph calculateSetConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, int connections, Ship ship)
 	{
 		return calculateDistanceSetConnections(space, min_distance, nodes, output, connections, NodeConnections.closest, ship);
 	}
 	
-	private AdjacencyMatrixGraph<Position> calculateAllConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node<Position>> nodes, boolean output, Ship ship)
+	private AdjacencyMatrixGraph calculateAllConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, Ship ship)
 	{
-		return calculateSetConnections(space, min_distance, nodes, output, 1000, ship);
+		return calculateSetConnections(space, min_distance, nodes, output, Integer.MAX_VALUE, ship);
 	}
 	
 	private Base getMyBase(Toroidal2DPhysics space, Ship ship)
