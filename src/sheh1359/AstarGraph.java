@@ -46,7 +46,7 @@ public class AstarGraph{
 			for(AstarNode current : nodes){
 				Double diff = space.findShortestDistance(n.getPosition(),current.getPosition());
 				if(diff == gridSizeA || Math.abs(diff - gridSizeB) < 0.5 ){ // very rough tolerance
-					if(space.isLocationFree(current.getPosition(), (int)gridSizeA/2) || current.getPosition() == goal){
+					if(space.isLocationFree(current.getPosition(), (int)gridSizeB/2) || current.getPosition() == goal){
 						n.addNeighbor(current);
 					}
 				}
