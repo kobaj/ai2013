@@ -208,8 +208,8 @@ public class UltraClient extends TeamClient {
 					Position end = s.getBlock(finalGoal).getPosition();
 				
 					
-					a = new AstarGraph(space,grid,end);
-					aPaths = a.getShortestPath(start);
+					a = new AstarGraph(space,grid,start,end);
+					aPaths = a.getShortestPath();
 					if(aPaths == null){
 						System.out.println("no path found");
 					}else{

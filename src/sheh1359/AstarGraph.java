@@ -18,8 +18,9 @@ public class AstarGraph{
 	ArrayList<AstarNode> visited;
 	
 	Position goal; 
+	Position start;
 	
-	public AstarGraph(Toroidal2DPhysics space,ArrayList<Position> grid, Position goal){
+	public AstarGraph(Toroidal2DPhysics space,ArrayList<Position> grid, Position start, Position goal){
 		
 		// we're going to assume the grid is actually a grid,
 		// and that the distances between all connected 
@@ -29,6 +30,7 @@ public class AstarGraph{
 		this.space = space;
 		this.nodes = new ArrayList<AstarNode>();
 		this.goal = goal;
+		this.start = start;
 		
 		// find the gridSize as described above, 
 		double gridSizeA = Math.abs(space.findShortestDistance(grid.get(0),grid.get(1)));
@@ -41,12 +43,12 @@ public class AstarGraph{
 		}
 		
 		// add paths between nodes that are adjacent physically
-		// and unoccupied unless by the goal
+		// and unoccupied unless by the goal or the ship
 		for(AstarNode n : nodes){
 			for(AstarNode current : nodes){
 				Double diff = space.findShortestDistance(n.getPosition(),current.getPosition());
 				if(diff == gridSizeA || Math.abs(diff - gridSizeB) < 0.5 ){ // very rough tolerance
-					if(space.isLocationFree(current.getPosition(), (int)gridSizeB/2) || current.getPosition() == goal){
+					if(space.isLocationFree(current.getPosition(), (int)gridSizeB/2) || current.getPosition() == goal || current.getPosition() == start){
 						n.addNeighbor(current);
 					}
 				}
@@ -64,10 +66,10 @@ public class AstarGraph{
 		return null;
 	}
 	
-	public ArrayList<Position> getShortestPath(Position startPosition){
+	public ArrayList<Position> getShortestPath(){
 		
 		
-		AstarNode start = getNode(startPosition);
+		AstarNode start = getNode(this.start);
 		AstarNode goal = getNode(this.goal);
 
 		fringe = new PriorityQueue<AstarNode>(1,hueristicCompare);
