@@ -71,31 +71,7 @@ public class UltraClient extends TeamClient {
 		// One action for every ship,  to be determined in the below loop
 		HashMap<String, SpacewarAction> shipActions = new HashMap<String, SpacewarAction>();
 		for (Ship ship : ships) {
-			
-			// make sure the ship isn't stuck by ensuring
-			// that it moved atleast 10 pixels in the last
-			// 80 steps.  If it is stuck, invalidate the final goal
-			if(stuckCounter.get(ship) == null){
-				stuckCounter.put(ship, 80);
-			}
-			if(stuckStart.get(ship) == null){
-				stuckStart.put(ship, ship.getPosition());
-			}
-			stuckCounter.put(ship, stuckCounter.get(ship) - 1);
-			if(stuckCounter.get(ship) == 0){
-				stuckNow.put(ship,ship.getPosition());
-				if(space.findShortestDistance(stuckNow.get(ship), stuckStart.get(ship)) < 10){
-					
-					// get a new random goal in the area.
-					finalGoal = space.getRandomFreeLocationInRegion(new Random(), 32, (int)ship.getPosition().getX(), (int)ship.getPosition().getY(), 256);
-					System.out.println("I'm stuck. Trying a different goal...");
-					
-					// set control variables
-					goalType = "asteroid";
-				}
-				stuckStart.put(ship, ship.getPosition());
-				stuckCounter.put(ship, 80);
-			}
+		
 	
 			// initialization stuff
 			SpacewarAction current = ship.getCurrentAction();
@@ -120,7 +96,6 @@ public class UltraClient extends TeamClient {
 			// There is no final goal. Create a new one
 			if(finalGoal == null || space.isLocationFree(finalGoal, 2)){
 				finalGoal = null;
-				oldShadows.add(currentShadows.get(ship));
 
 				// The ship does not have enough money to take back
 				if(ship.getMoney() <= 10){
@@ -192,10 +167,7 @@ public class UltraClient extends TeamClient {
 						
 				}
 				
-				// indicate the final goal
-				Shadow shadow = new CircleShadow(3, getTeamColor(), finalGoal);
-				newShadows.add(shadow);
-				currentShadows.put(ship, shadow);
+				
 				
 			}
 			
@@ -211,42 +183,41 @@ public class UltraClient extends TeamClient {
 					finalApproach == false 	&& 
 					(current == null || current.isMovementFinished() || counter == 0 )
 			){
+				oldShadows.add(currentShadows.get(ship));
+
 				
 				// restart the timeout for replanning
 				counter = 20;
 				
 				
-				// Populate a graph of positions of gridblocks
-				AdjacencyListGraph<Position> graph = new AdjacencyListGraph<Position>();
+				
+				// Populate a list of disrete positions
+				ArrayList<Position> grid = new ArrayList<Position>();
 				for(ArrayList<SpaceBlock> row : s.getBlocks()){
 					for(SpaceBlock b : row ){
-						graph.addNode(b.getPosition());
+						grid.add(b.getPosition());
 					}
 				}
 				
-				// Connect the graph nodes containing unoccupied adjacent positions
-				try{
-					//set unit cost paths if not occupied and adjacent
-					for(Node<Position> n : graph.getNodes()){
-						ArrayList<SpaceBlock> adj = s.getAdjacentTo(s.getBlock(n.getItem()));
-						for(SpaceBlock b: adj){
-							if(b.isClear() || b.contains(finalGoal)){
-								graph.addPath(n.getItem(),b.getPosition() , 1);
-							}
-						}
-					}
-				}catch(Exception e){
-					System.out.println("cant get block");
-				}
 				
 				// Perform A* to get a path to the final goal
-				AStarTwo a;
+				AstarGraph a;
 				try {
-					a = new AStarTwo(graph,space,s,s.getBlock(ship.getPosition()).getPosition(),finalGoal);
-					aPaths = a.getPaths();
-					//System.out.println(aPaths.size());
+					
+					Position start = s.getBlock(ship.getPosition()).getPosition();
+					Position end = s.getBlock(finalGoal).getPosition();
+				
+					
+					a = new AstarGraph(space,grid,end);
+					aPaths = a.getShortestPath(start);
+					if(aPaths == null){
+						System.out.println("no path found");
+					}else{
+						System.out.println("Path size: " + aPaths.size());
+					}
 				} catch (Exception e) {
 					e.printStackTrace();
+					System.exit(0);
 				}
 
 				
@@ -256,19 +227,40 @@ public class UltraClient extends TeamClient {
 				// the start position and the second contains "noise" that 
 				// causes back and forth motion as the path is updated repeatedly
 				try{
+					try{
+						Position newGoal = aPaths.get(2);
+						Shadow shadow = new CircleShadow(3, getTeamColor(), newGoal);
+						newShadows.add(shadow);
+						currentShadows.put(ship, shadow);
+						// make the ship go faster by extending the displacement vector to a further position
+						Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
+						v.multiply(10);
+						int newX = (int) (v.getXValue() + ship.getPosition().getX());
+						int newY = (int) (v.getYValue() + ship.getPosition().getY());
+						Position multGoal = new Position (newX,newY);
+						
+						// set the action
+						MoveAction newAction = new MoveAction(space, ship.getPosition(), multGoal);
+						shipActions.put(ship.getId(), newAction);
+					}catch(Exception e){
+						Position newGoal = aPaths.get(1);
+						Shadow shadow = new CircleShadow(3, getTeamColor(), newGoal);
+						newShadows.add(shadow);
+						currentShadows.put(ship, shadow);
+						// make the ship go faster by extending the displacement vector to a further position
+						Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
+						v.multiply(10);
+						int newX = (int) (v.getXValue() + ship.getPosition().getX());
+						int newY = (int) (v.getYValue() + ship.getPosition().getY());
+						Position multGoal = new Position (newX,newY);
+						
+						// set the action
+						MoveAction newAction = new MoveAction(space, ship.getPosition(), multGoal);
+						shipActions.put(ship.getId(), newAction);
+					}
 					
-					Position newGoal = aPaths.get(2);
 					
-					// make the ship go faster by extending the displacement vector to a further position
-					Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
-					v.multiply(10);
-					int newX = (int) (v.getXValue() + ship.getPosition().getX());
-					int newY = (int) (v.getYValue() + ship.getPosition().getY());
-					Position multGoal = new Position (newX,newY);
 					
-					// set the action
-					MoveAction newAction = new MoveAction(space, ship.getPosition(), multGoal);
-					shipActions.put(ship.getId(), newAction);
 					
 					
 				// We are too close to use the grid for navigation.
