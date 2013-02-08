@@ -4,21 +4,29 @@ import java.util.ArrayList;
 
 public class AdjacencyMatrixGraph
 {
+	// labels that show rows come first (row major)
 	final public static int ROW = 0;
 	final public static int COLUMN = 1;
 	
+	// how many nodes are in this adjacency matrix
 	final private int node_count;
 	
+	// the actual storage
 	final private double[][] adjacency_matrix;
 	
+	// handy copy of nodes
 	private ArrayList<Node> nodes;
 	
+	// all nodes are stored in adjanccy matrix
+	// if two nodes are connected, the distance between them is stored in the matrix
+	// if they are not connected, the distance between them is 0
+	// if two nodes are the same, then they are connected.
 	public AdjacencyMatrixGraph(int node_count)
 	{
 		if (node_count <= 0)
 			node_count = 1;
 		
-		this.node_count = node_count; // because we swap row and column to reduce the table height, we need to increase its girth.
+		this.node_count = node_count;
 		
 		adjacency_matrix = new double[node_count][node_count];
 	}
@@ -101,13 +109,7 @@ public class AdjacencyMatrixGraph
 		return children;
 	}
 	
-	/*
-	 * public void buildTree(DefaultMutableTreeNode top, Node parent) { ArrayList<Node> visited = new ArrayList<Node>(); visited.add(parent);
-	 * 
-	 * while (true) { ArrayList<Node> children = getChildren(parent); for (Node child : children) { if (!visited.contains(child)) { top.add(new DefaultMutableTreeNode(child)); visited.add(child); } }
-	 * } }
-	 */
-	
+	// set row major
 	private int[] fixRowColumn(int row, int column)
 	{
 		if (row > column)

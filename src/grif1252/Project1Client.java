@@ -29,44 +29,72 @@ import spacewar2.utilities.Vector2D;
 
 public class Project1Client extends TeamClient
 {
+	// ways of searching for nodes
 	public static enum NodeConnections
 	{
 		closest, furthest, random
 	};
 	
+	// ship goals are overall goals (base, beacon, or mineable asteroid)
 	HashMap<Ship, String> ship_goals;
+	// local goals are nodes inbetween the ship and its overall goal
 	HashMap<Ship, Position> local_goals;
 	
+	// much better way of handling shadows
+	// allows shadows to be redrawn every frame
+	// no reference to the old shadow needs to be 'remembered' by
+	// the creator of the shadow
 	HashMap<String, ArrayList<Shadow>> managedShadows;
 	ArrayList<Shadow> newShadows;
 	ArrayList<Shadow> oldShadows;
 	
+	// this variable determines how close a ship has to be to its local goal before
+	// the goal is considered reached
 	final public static int SUBGOAL_DISTANCE = 30;
 	
-	// vary to determine which to pick (asteroid, beacon, or money).
+	// vary the following to determine which to pick (asteroid, beacon, or money).
+	// none of these are strickly if/then nor one to one.
+	// eg, just because an asteroid has a size of 900 (> 700) does not mean we go after it.
+	
+	// how big should an asteroid be (money wise) so that we pick it, instead of the closest asteroid
 	final public static double ASTEROID_SIZE = 700;
+	
+	// how much money until a ship searches for a base
 	final public static double MONEY_RETURN = 150;
+	
+	// how low on energy should we be before searching for a beacon
 	final public static double BEACON_GET = 900;
 	
+	// when calculating nodes randomly, how many should we use (much like resolution)
 	public static int MAX_RANDOM_NODES = 10;
 	
+	// when calculating nodes in the variable grid, how much extra space should we include
+	// to compensate for unfindable paths
 	final public static int SQUARE_PADDING = 150;
 	
+	// how many loops should we go through before recalculating astar and nodes
 	final public static int MAX_ITERATIONS = 20;
 	HashMap<Ship, Integer> current_iterations;
 	
-	final public static int X_RES = 1024;
-	final public static int Y_RES = 768;
+	// screen resolution
+	public static int X_RES = 1024;
+	public static int Y_RES = 768;
+	
+	// how many nodes we should make (square thise to get total)
 	final public static double RES = 10.0;
 	
+	// how many links should be attempted between nodes
+	// (8 would be up down left right and diagonals)
 	final public static int MAX_NUM_NODE_CONNECTIONS = 20;
 	
+	// because we are unable to access the parent random
 	Random random;
 	
+	// no_draw = true means draw shadows if shadows are uncommented in getAction
 	final private boolean no_draw = false;
-	final private boolean global_output = false;
 	
-	private long time;
+	// global_output = true means it will output to console (Except heartbeat always outputs)
+	final private boolean global_output = false;
 	
 	@Override
 	public void initialize()
@@ -90,27 +118,25 @@ public class Project1Client extends TeamClient
 		
 	}
 	
-	private void switchShadows()
+	@Override
+	public void endAction(Toroidal2DPhysics space, ArrayList<Ship> ships)
 	{
-		oldShadows = new ArrayList<Shadow>(newShadows);
-		newShadows.clear();
-		
-		Iterator<Entry<String, ArrayList<Shadow>>> it = managedShadows.entrySet().iterator();
-		while (it.hasNext())
-		{
-			Map.Entry<String, ArrayList<Shadow>> pairs = (Map.Entry<String, ArrayList<Shadow>>) it.next();
-			
-			ArrayList<Shadow> shadows = pairs.getValue();
-			
-			for (Shadow s : shadows)
-				newShadows.add(s);
-		}
+		// newShadows.clear();
 	}
 	
+	// basic overview
+	// first we check and see if any goals have been gotten or we need to update star because of iterations
+	// if yes then nodes are generated in a rectangle grid around the diagonal between the ship and its goal
+	// the goal is picked by addStartAndGoal which picks a goal based on priority
+	// then connections are made between nodes
+	// then an astar path is found between nodes
 	@Override
 	public HashMap<String, SpacewarAction> getAction(Toroidal2DPhysics space, ArrayList<Ship> ships)
 	{
-		time = System.currentTimeMillis();
+		// store necissary variables
+		Long time = System.currentTimeMillis();
+		X_RES = space.getWidth();
+		Y_RES = space.getHeight();
 		
 		// switch shadows
 		switchShadows();
@@ -195,16 +221,10 @@ public class Project1Client extends TeamClient
 						for (Node n : outer_nodes)
 							nodes.add(n.copy());
 						
-						// calculate our matrix
-						// calculateNodesHalfAsteroids(local_space, ship.getRadius(), ship, true);
-						// calculateNodesRandom(local_space, ship.getRadius(), ship, random, true);
 						calculateNodesGrid(sub_local_space, RES, Project1Client.SQUARE_PADDING, ship, false, nodes);
-						// calculateNodesGridDense(space, RES, Project1Client.SQUARE_PADDING, ship, false, nodes);
 						
 						// make all connections
 						matrix_graph = calculateDistanceSetConnections(sub_local_space, ship.getRadius(), nodes, false, (int) (MAX_NUM_NODE_CONNECTIONS), NodeConnections.closest, ship);
-						// matrix_graph = calculateSetConnections(local_space, ship.getRadius(), nodes, false, MAX_NUM_NODE_CONNECTIONS);
-						// matrix_graph = calculateAllConnections(local_space, ship.getRadius(), nodes, false);
 						
 						// find the fastest way through it
 						fast_path = AStar(sub_local_space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
@@ -228,7 +248,7 @@ public class Project1Client extends TeamClient
 				if (global_output)
 					System.out.println("LOOP ran for " + e * i + " times. (" + e + ", " + i + ")");
 				
-				// uncomment to draw lines
+				// un-comment to draw lines and shadows
 				ArrayList<Shadow> node_shadows = new ArrayList<Shadow>();
 				// for(Node n: nodes)
 				// drawNodesConnections(space, n, n, ship.getRadius(), node_shadows); // draw all nodes
@@ -289,350 +309,9 @@ public class Project1Client extends TeamClient
 		return actions;
 	}
 	
-	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node> nodes, double min_radius, ArrayList<Shadow> node_shadows)
-	{
-		if (nodes == null)
-			return;
-		
-		for (Node n : nodes)
-		{
-			if (n.parent != null)
-				drawNodesConnections(space, n.parent, n, min_radius, node_shadows);
-		}
-	}
-	
-	private void drawNodesConnections(Toroidal2DPhysics space, Node a, Node b, double min_radius, ArrayList<Shadow> node_shadows)
-	{
-		node_shadows.add(new CircleShadow(1, Color.orange, a.position));
-		
-		if (min_radius > 0)
-		{
-			double divisors = Math.ceil(space.findShortestDistance(a.position, b.position) / (min_radius * 2));
-			for (int j = 0; j < divisors; j++)
-			{
-				double next_x = lerp(0, divisors, j, a.position.getX(), b.position.getX());
-				double next_y = lerp(0, divisors, j, a.position.getY(), b.position.getY());
-				
-				node_shadows.add(new CircleShadow((int) (min_radius / 5.0), getTeamColor(), new Position(next_x, next_y)));
-			}
-		}
-		else
-		{
-			node_shadows.add(new LineShadow(b.position, a.position, new Vector2D(a.position.getX() - b.position.getX(), a.position.getY() - b.position.getY())));
-		}
-	}
-	
-	private void drawLines(Toroidal2DPhysics space, AdjacencyMatrixGraph temp, double min_radius, ArrayList<Shadow> node_shadows)
-	{
-		ArrayList<Node> nodes = temp.getNodes();
-		
-		ArrayList<Node> visited_nodes = new ArrayList<Node>();
-		
-		for (Node n1 : nodes)
-		{
-			for (Node n2 : nodes)
-				if (!n1.equals(n2) && !visited_nodes.contains(n2) && temp.getConnected(n1, n2))
-					drawNodesConnections(space, n1, n2, min_radius, node_shadows);
-			
-			visited_nodes.add(n1);
-		}
-		
-	}
-	
-	private ArrayList<Node> AStar(Toroidal2DPhysics space, AdjacencyMatrixGraph graph, Node start, boolean output)
-	{
-		// have to stick the graph into a tree starting from start
-		
-		if (output)
-		{
-			System.out.println("******************************************************");
-			System.out.println("*                Shortest path with A*               *");
-			System.out.println("******************************************************");
-		}
-		
-		ArrayList<Node> closed_visited = new ArrayList<Node>();
-		closed_visited.add(start);
-		PriorityQueue<Node> fringe = new PriorityQueue<Node>(10, new NodeComparator());
-		
-		if (output)
-			System.out.println("starting at: " + start.toString());
-		
-		ArrayList<Node> children = graph.getChildren(start);
-		for (Node child : children)
-		{
-			child.root_to_n_distance = space.findShortestDistance(start.position, child.position);
-			fringe.add(child.copy());
-			if (output)
-				System.out.println("child: " + child.toString());
-		}
-		
-		while (true)
-		{
-			if (output)
-				System.out.println("doing a loop");
-			
-			if (fringe.isEmpty())
-				return null;
-			
-			Node next = fringe.poll();
-			
-			if (output)
-				System.out.println("next is at: " + next.toString());
-			
-			if (next.node_type == NodeType.goal)
-			{
-				if (output)
-					System.out.println("found the goal: " + next.toString());
-				return next.getPathToRoot();
-			}
-			else
-			{
-				closed_visited.add(next.copy());
-				ArrayList<Node> sub_children = graph.getChildren(next);
-				for (Node child : sub_children)
-				{
-					child.root_to_n_distance = next.root_to_n_distance + space.findShortestDistance(child.position, next.position);
-					
-					if (output)
-						System.out.println("child: " + child.toString());
-					
-					boolean inserted = false;
-					
-					// or visited
-					for (Node p : closed_visited)
-					{
-						if (p.matrix_id == child.matrix_id)
-						{
-							if (output)
-								System.out.println("already visited : " + child.toString());
-							inserted = true;
-							break;
-						}
-					}
-					
-					// already there
-					if (!inserted)
-						for (Node p : fringe)
-							if (p.matrix_id == child.matrix_id)
-							{
-								if (output)
-									System.out.println("already fringed : " + child.toString() + (new Formatter()).format("%n  previous child was: ") + p.toString());
-								
-								if (p.fn() > child.fn())
-								{
-									p.root_to_n_distance = child.root_to_n_distance;
-									p.parent = next;
-									
-									if (output)
-										System.out.println("  this child is better : " + child.toString());
-									
-								}
-								inserted = true;
-								break;
-							}
-					
-					// add to fringe
-					if (!inserted)
-						fringe.add(child);
-				}
-			}
-		}
-	}
-	
-	private void calculateNodesGridDense_helper(Toroidal2DPhysics space, int ship_min_x, int ship_max_x, int ship_min_y, int ship_max_y, int divider, ArrayList<Node> nodes, Ship ship)
-	{
-		int divider_x = (int) (ship_max_x / divider);
-		int divider_y = (int) (ship_max_y / divider);
-		
-		Position goal = nodes.get(0).position;
-		
-		int e = nodes.size();
-		
-		for (int i = ship_min_x; i < ship_max_x; i += divider_x)
-			for (int j = ship_min_y; j < ship_max_y; j += divider_y)
-			{
-				Position position = new Position(i, j);
-				
-				// find the distance to player
-				// dont add it if the player is really close
-				if (space.findShortestDistance(position, ship.getPosition()) > SUBGOAL_DISTANCE)
-				{
-					nodes.add(new Node(position, e, NodeType.regular, space.findShortestDistance(position, goal)));
-					e++;
-				}
-			}
-	}
-	
-	private void calculateNodesGridDense(Toroidal2DPhysics space, double divider, int padding, Ship ship, boolean output, ArrayList<Node> nodes)
-	{
-		if (output)
-		{
-			System.out.println("******************************************************");
-			System.out.println("*          Calculating Node Grid DENSE               *");
-			System.out.println("******************************************************");
-		}
-		
-		// make a dense grid around the ship
-		int ship_min_x = (int) (ship.getPosition().getX() - padding);
-		int ship_max_x = (int) (ship.getPosition().getX() + padding);
-		int ship_min_y = (int) (ship.getPosition().getY() - padding);
-		int ship_max_y = (int) (ship.getPosition().getY() + padding);
-		
-		calculateNodesGridDense_helper(space, ship_min_x, ship_max_x, ship_min_y, ship_max_y, (int) divider / 2, nodes, ship);
-		
-		Position goal = nodes.get(0).position;
-		
-		// make a dense grid around the goal
-		int goal_min_x = (int) (goal.getX() - padding);
-		int goal_max_x = (int) (goal.getX() + padding);
-		int goal_min_y = (int) (goal.getY() - padding);
-		int goal_max_y = (int) (goal.getY() + padding);
-		
-		calculateNodesGridDense_helper(space, goal_min_x, goal_max_x, goal_min_y, goal_max_y, (int) divider / 2, nodes, ship);
-		
-		// default
-		int min_x = 0;
-		int max_x = Project1Client.X_RES;
-		int min_y = 0;
-		int max_y = Project1Client.Y_RES;
-		
-		calculateNodesGridDense_helper(space, min_x, max_x, min_y, max_y, (int) divider, nodes, ship);
-	}
-	
-	private void calculateNodesGrid(Toroidal2DPhysics space, double divider, int padding, Ship ship, boolean output, ArrayList<Node> nodes)
-	{
-		if (output)
-		{
-			System.out.println("******************************************************");
-			System.out.println("*                Calculating Node Grid               *");
-			System.out.println("******************************************************");
-		}
-		
-		Position goal = nodes.get(0).position;
-		
-		// default
-		int min_x = 0;
-		int max_x = Project1Client.X_RES;
-		int min_y = 0;
-		int max_y = Project1Client.Y_RES;
-		
-		Vector2D smallest_distance = space.findShortestDistanceVector(ship.getPosition(), goal);
-		double radian = smallest_distance.getAngle();
-		double degree = Math.toDegrees(radian);
-		
-		if (output)
-			System.out.println("Radian: " + radian + " degree: " + Math.toDegrees(radian));
-		
-		// focus in the search just a little bit
-		if (-90 < degree && degree < 90)
-		{
-			min_x = (int) (ship.getPosition().getX() - padding);
-			max_x = (int) (goal.getX() + padding);
-		}
-		else
-		{
-			max_x = (int) (ship.getPosition().getX() + padding);
-			min_x = (int) (goal.getX() - padding);
-		}
-		
-		if (180 > degree && degree > 0)
-		{
-			min_y = (int) (ship.getPosition().getY() - padding);
-			max_y = (int) (goal.getY() + padding);
-		}
-		else
-		{
-			max_y = (int) (ship.getPosition().getY() + padding);
-			min_y = (int) (goal.getY() - padding);
-		}
-		
-		int divider_x = (int) (max_x / divider);
-		int divider_y = (int) (max_y / divider);
-		
-		int e = nodes.size();
-		for (int i = min_x; i < max_x; i += divider_x)
-			for (int j = min_y; j < max_y; j += divider_y)
-			{
-				Position position = new Position(i, j);
-				
-				// find the distance to player
-				// dont add it if the player is really close
-				if (space.findShortestDistance(position, ship.getPosition()) > SUBGOAL_DISTANCE)
-				{
-					nodes.add(new Node(position, e, NodeType.regular, space.findShortestDistance(position, goal)));
-					e++;
-				}
-			}
-	}
-	
-	private ArrayList<Node> calculateNodesRandom(Toroidal2DPhysics space, double min_distance, Ship ship, Random random, boolean output, ArrayList<Node> nodes)
-	{
-		if (output)
-		{
-			System.out.println("******************************************************");
-			System.out.println("*               Calculating Node Random              *");
-			System.out.println("******************************************************");
-		}
-		
-		Position goal = nodes.get(0).position;
-		
-		int i = nodes.size();
-		for (; i < MAX_RANDOM_NODES;)
-		{
-			Position open = space.getRandomFreeLocation(random, (int) min_distance);
-			if (space.findShortestDistance(open, ship.getPosition()) > SUBGOAL_DISTANCE)
-			{
-				nodes.add(new Node(open, i, NodeType.regular, space.findShortestDistance(open, goal)));
-				i++;
-			}
-		}
-		
-		return nodes;
-	}
-	
-	private ArrayList<Node> calculateNodesHalfAsteroids(Toroidal2DPhysics space, double min_distance, Ship ship, boolean output, ArrayList<Node> nodes)
-	{
-		if (output)
-		{
-			System.out.println("******************************************************");
-			System.out.println("*              Calculating Node Haltroid             *");
-			System.out.println("******************************************************");
-		}
-		
-		ArrayList<Asteroid> asteroids = space.getAsteroids();
-		ArrayList<Asteroid> visited_asteroids = new ArrayList<Asteroid>();
-		
-		Position goal = nodes.get(0).position;
-		
-		int i = nodes.size();
-		for (Asteroid a1 : asteroids)
-		{
-			for (Asteroid a2 : asteroids)
-				if (!a2.isMineable())
-					if (!a1.equals(a2) && !visited_asteroids.contains(a2))
-					{
-						// not the same, find the distance between them
-						double distance = space.findShortestDistance(a1.getPosition(), a2.getPosition()) - 2.0 * (a1.getRadius() + a2.getRadius());
-						if (distance > min_distance)
-						{
-							// we can place a node
-							Position this_position = get_half_way_point(a1.getPosition(), a2.getPosition());
-							
-							if (space.findShortestDistance(this_position, ship.getPosition()) > SUBGOAL_DISTANCE)
-							{
-								Node potential_location = new Node(this_position, i, NodeType.regular, space.findShortestDistance(this_position, goal));
-								nodes.add(potential_location);
-								i++;
-							}
-						}
-					}
-			
-			visited_asteroids.add(a1);
-		}
-		
-		return nodes;
-	}
-	
+	// find start and goal nodes
+	// start is ship
+	// goal is calculated based on priority of asteroids, bases, beacons, etc.
 	private SpacewarObject addStartAndGoal(Toroidal2DPhysics space, Ship ship, ArrayList<Node> nodes, boolean output, ArrayList<SpacewarObject> out_goal)
 	{
 		// we add two nodes, one for start, one for destination
@@ -776,6 +455,75 @@ public class Project1Client extends TeamClient
 		return goal;
 	}
 	
+	// generate a grid of nodes in the rectangle surrounding the diagonal between start and goal
+	// be sure to pad this grid
+	private void calculateNodesGrid(Toroidal2DPhysics space, double divider, int padding, Ship ship, boolean output, ArrayList<Node> nodes)
+	{
+		if (output)
+		{
+			System.out.println("******************************************************");
+			System.out.println("*                Calculating Node Grid               *");
+			System.out.println("******************************************************");
+		}
+		
+		Position goal = nodes.get(0).position;
+		
+		// default
+		int min_x = 0;
+		int max_x = Project1Client.X_RES;
+		int min_y = 0;
+		int max_y = Project1Client.Y_RES;
+		
+		Vector2D smallest_distance = space.findShortestDistanceVector(ship.getPosition(), goal);
+		double radian = smallest_distance.getAngle();
+		double degree = Math.toDegrees(radian);
+		
+		if (output)
+			System.out.println("Radian: " + radian + " degree: " + Math.toDegrees(radian));
+		
+		// focus in the search just a little bit
+		if (-90 < degree && degree < 90)
+		{
+			min_x = (int) (ship.getPosition().getX() - padding);
+			max_x = (int) (goal.getX() + padding);
+		}
+		else
+		{
+			max_x = (int) (ship.getPosition().getX() + padding);
+			min_x = (int) (goal.getX() - padding);
+		}
+		
+		if (180 > degree && degree > 0)
+		{
+			min_y = (int) (ship.getPosition().getY() - padding);
+			max_y = (int) (goal.getY() + padding);
+		}
+		else
+		{
+			max_y = (int) (ship.getPosition().getY() + padding);
+			min_y = (int) (goal.getY() - padding);
+		}
+		
+		int divider_x = (int) (max_x / divider);
+		int divider_y = (int) (max_y / divider);
+		
+		int e = nodes.size();
+		for (int i = min_x; i < max_x; i += divider_x)
+			for (int j = min_y; j < max_y; j += divider_y)
+			{
+				Position position = new Position(i, j);
+				
+				// find the distance to player
+				// dont add it if the player is really close
+				if (space.findShortestDistance(position, ship.getPosition()) > SUBGOAL_DISTANCE)
+				{
+					nodes.add(new Node(position, e, NodeType.regular, space.findShortestDistance(position, goal)));
+					e++;
+				}
+			}
+	}
+	
+	// calculate n many connections between nodes as possible
 	private AdjacencyMatrixGraph calculateDistanceSetConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, int connections, NodeConnections type, Ship ship)
 	{
 		if (connections < 2)
@@ -898,15 +646,108 @@ public class Project1Client extends TeamClient
 		return my_graph;
 	}
 	
-	private AdjacencyMatrixGraph calculateSetConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, int connections, Ship ship)
+	// finally with all nodes connections found, find a path along the nodes.
+	private ArrayList<Node> AStar(Toroidal2DPhysics space, AdjacencyMatrixGraph graph, Node start, boolean output)
 	{
-		return calculateDistanceSetConnections(space, min_distance, nodes, output, connections, NodeConnections.closest, ship);
+		// have to stick the graph into a tree starting from start
+		
+		if (output)
+		{
+			System.out.println("******************************************************");
+			System.out.println("*                Shortest path with A*               *");
+			System.out.println("******************************************************");
+		}
+		
+		ArrayList<Node> closed_visited = new ArrayList<Node>();
+		closed_visited.add(start);
+		PriorityQueue<Node> fringe = new PriorityQueue<Node>(10, new NodeComparator());
+		
+		if (output)
+			System.out.println("starting at: " + start.toString());
+		
+		ArrayList<Node> children = graph.getChildren(start);
+		for (Node child : children)
+		{
+			child.root_to_n_distance = space.findShortestDistance(start.position, child.position);
+			fringe.add(child.copy());
+			if (output)
+				System.out.println("child: " + child.toString());
+		}
+		
+		while (true)
+		{
+			if (output)
+				System.out.println("doing a loop");
+			
+			if (fringe.isEmpty())
+				return null;
+			
+			Node next = fringe.poll();
+			
+			if (output)
+				System.out.println("next is at: " + next.toString());
+			
+			if (next.node_type == NodeType.goal)
+			{
+				if (output)
+					System.out.println("found the goal: " + next.toString());
+				return next.getPathToRoot();
+			}
+			else
+			{
+				closed_visited.add(next.copy());
+				ArrayList<Node> sub_children = graph.getChildren(next);
+				for (Node child : sub_children)
+				{
+					child.root_to_n_distance = next.root_to_n_distance + space.findShortestDistance(child.position, next.position);
+					
+					if (output)
+						System.out.println("child: " + child.toString());
+					
+					boolean inserted = false;
+					
+					// or visited
+					for (Node p : closed_visited)
+					{
+						if (p.matrix_id == child.matrix_id)
+						{
+							if (output)
+								System.out.println("already visited : " + child.toString());
+							inserted = true;
+							break;
+						}
+					}
+					
+					// already there
+					if (!inserted)
+						for (Node p : fringe)
+							if (p.matrix_id == child.matrix_id)
+							{
+								if (output)
+									System.out.println("already fringed : " + child.toString() + (new Formatter()).format("%n  previous child was: ") + p.toString());
+								
+								if (p.fn() > child.fn())
+								{
+									p.root_to_n_distance = child.root_to_n_distance;
+									p.parent = next;
+									
+									if (output)
+										System.out.println("  this child is better : " + child.toString());
+									
+								}
+								inserted = true;
+								break;
+							}
+					
+					// add to fringe
+					if (!inserted)
+						fringe.add(child);
+				}
+			}
+		}
 	}
 	
-	private AdjacencyMatrixGraph calculateAllConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, Ship ship)
-	{
-		return calculateSetConnections(space, min_distance, nodes, output, Integer.MAX_VALUE, ship);
-	}
+	// methods to help find appropriot goals
 	
 	private Base getMyBase(Toroidal2DPhysics space, Ship ship)
 	{
@@ -989,6 +830,8 @@ public class Project1Client extends TeamClient
 		return min_beacon;
 	}
 	
+	// methods that are needed to calculated math values
+	
 	private double lerp(double min_x, double max_x, double between, double min_y, double max_y)
 	{
 		double numerator1 = min_y * (between - max_x);
@@ -1001,15 +844,82 @@ public class Project1Client extends TeamClient
 		return final_value;
 	}
 	
+	@SuppressWarnings("unused")
 	private Position get_half_way_point(Position a, Position b)
 	{
 		return new Position(((a.getX() + b.getX()) / 2.0), ((a.getY() + b.getY()) / 2.0));
 	}
 	
-	@Override
-	public void endAction(Toroidal2DPhysics space, ArrayList<Ship> ships)
+	// everything below here is dealing with drawing and shadows
+	
+	// new shadow manager deletes old shadows, and prepares new shadows for draw
+	private void switchShadows()
 	{
-		// newShadows.clear();
+		oldShadows = new ArrayList<Shadow>(newShadows);
+		newShadows.clear();
+		
+		Iterator<Entry<String, ArrayList<Shadow>>> it = managedShadows.entrySet().iterator();
+		while (it.hasNext())
+		{
+			Map.Entry<String, ArrayList<Shadow>> pairs = (Map.Entry<String, ArrayList<Shadow>>) it.next();
+			
+			ArrayList<Shadow> shadows = pairs.getValue();
+			
+			for (Shadow s : shadows)
+				newShadows.add(s);
+		}
+	}
+	
+	@SuppressWarnings("unused")
+	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node> nodes, double min_radius, ArrayList<Shadow> node_shadows)
+	{
+		if (nodes == null)
+			return;
+		
+		for (Node n : nodes)
+		{
+			if (n.parent != null)
+				drawNodesConnections(space, n.parent, n, min_radius, node_shadows);
+		}
+	}
+	
+	private void drawNodesConnections(Toroidal2DPhysics space, Node a, Node b, double min_radius, ArrayList<Shadow> node_shadows)
+	{
+		node_shadows.add(new CircleShadow(1, Color.orange, a.position));
+		
+		if (min_radius > 0)
+		{
+			double divisors = Math.ceil(space.findShortestDistance(a.position, b.position) / (min_radius * 2));
+			for (int j = 0; j < divisors; j++)
+			{
+				double next_x = lerp(0, divisors, j, a.position.getX(), b.position.getX());
+				double next_y = lerp(0, divisors, j, a.position.getY(), b.position.getY());
+				
+				node_shadows.add(new CircleShadow((int) (min_radius / 5.0), getTeamColor(), new Position(next_x, next_y)));
+			}
+		}
+		else
+		{
+			node_shadows.add(new LineShadow(b.position, a.position, new Vector2D(a.position.getX() - b.position.getX(), a.position.getY() - b.position.getY())));
+		}
+	}
+	
+	@SuppressWarnings("unused")
+	private void drawLines(Toroidal2DPhysics space, AdjacencyMatrixGraph temp, double min_radius, ArrayList<Shadow> node_shadows)
+	{
+		ArrayList<Node> nodes = temp.getNodes();
+		
+		ArrayList<Node> visited_nodes = new ArrayList<Node>();
+		
+		for (Node n1 : nodes)
+		{
+			for (Node n2 : nodes)
+				if (!n1.equals(n2) && !visited_nodes.contains(n2) && temp.getConnected(n1, n2))
+					drawNodesConnections(space, n1, n2, min_radius, node_shadows);
+			
+			visited_nodes.add(n1);
+		}
+		
 	}
 	
 	@Override
