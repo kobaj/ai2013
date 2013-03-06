@@ -6,20 +6,26 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
 
 import spacewar2.actions.MoveAction;
 import spacewar2.actions.SpacewarAction;
+import spacewar2.actions.SpacewarPurchaseEnum;
 import spacewar2.clients.TeamClient;
 import spacewar2.objects.Asteroid;
 import spacewar2.objects.Base;
 import spacewar2.objects.Beacon;
 import spacewar2.objects.Ship;
+import spacewar2.objects.SpacewarActionableObject;
 import spacewar2.objects.SpacewarObject;
+import spacewar2.powerups.SpacewarPowerup;
 import spacewar2.shadows.CircleShadow;
 import spacewar2.shadows.LineShadow;
 import spacewar2.shadows.Shadow;
@@ -40,14 +46,6 @@ public class Project1Client extends TeamClient
 	// local goals are nodes inbetween the ship and its overall goal
 	HashMap<Ship, Position> local_goals;
 	
-	// much better way of handling shadows
-	// allows shadows to be redrawn every frame
-	// no reference to the old shadow needs to be 'remembered' by
-	// the creator of the shadow
-	HashMap<String, ArrayList<Shadow>> managedShadows;
-	ArrayList<Shadow> newShadows;
-	ArrayList<Shadow> oldShadows;
-	
 	// this variable determines how close a ship has to be to its local goal before
 	// the goal is considered reached
 	final public static int SUBGOAL_DISTANCE = 30;
@@ -57,7 +55,7 @@ public class Project1Client extends TeamClient
 	// eg, just because an asteroid has a size of 900 (> 700) does not mean we go after it.
 	
 	// how big should an asteroid be (money wise) so that we pick it, instead of the closest asteroid
-	final public static double ASTEROID_SIZE = 700;
+	final public static double ASTEROID_SIZE = 250;
 	
 	// how much money until a ship searches for a base
 	final public static double MONEY_RETURN = 150;
@@ -96,6 +94,8 @@ public class Project1Client extends TeamClient
 	// global_output = true means it will output to console (Except heartbeat always outputs)
 	final private boolean global_output = false;
 	
+	ShadowManager my_shadow_manager;
+	
 	@Override
 	public void initialize()
 	{
@@ -104,24 +104,9 @@ public class Project1Client extends TeamClient
 		
 		current_iterations = new HashMap<Ship, Integer>();
 		
-		managedShadows = new HashMap<String, ArrayList<Shadow>>();
-		newShadows = new ArrayList<Shadow>();
-		oldShadows = new ArrayList<Shadow>();
+		my_shadow_manager = new ShadowManager();
 		
 		random = new Random();
-	}
-	
-	@Override
-	public void shutDown()
-	{
-		// TODO Auto-generated method stub
-		
-	}
-	
-	@Override
-	public void endAction(Toroidal2DPhysics space, ArrayList<Ship> ships)
-	{
-		// newShadows.clear();
 	}
 	
 	// basic overview
@@ -130,8 +115,9 @@ public class Project1Client extends TeamClient
 	// the goal is picked by addStartAndGoal which picks a goal based on priority
 	// then connections are made between nodes
 	// then an astar path is found between nodes
+	
 	@Override
-	public HashMap<String, SpacewarAction> getAction(Toroidal2DPhysics space, ArrayList<Ship> ships)
+	public Map<UUID, SpacewarAction> getMovementStart(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
 		// store necissary variables
 		Long time = System.currentTimeMillis();
@@ -139,13 +125,14 @@ public class Project1Client extends TeamClient
 		Y_RES = space.getHeight();
 		
 		// switch shadows
-		switchShadows();
+		my_shadow_manager.switchShadows();
 		
-		HashMap<String, SpacewarAction> actions = new HashMap<String, SpacewarAction>();
+		HashMap<UUID, SpacewarAction> actions = new HashMap<UUID, SpacewarAction>();
 		Toroidal2DPhysics local_space = space.deepClone();
 		
-		for (Ship ship : ships)
-		{
+		for (SpacewarObject actionable :  actionableObjects) 
+		if (actionable instanceof Ship) {
+			Ship ship = (Ship) actionable;
 			SpacewarAction current = ship.getCurrentAction();
 			
 			// work on iterations
@@ -189,7 +176,7 @@ public class Project1Client extends TeamClient
 				}
 			
 			// get next ship action
-			if (current == null || current.isMovementFinished() || current_iterations.get(ship) <= 0 || !goal_exists)
+			if (current == null || current.isMovementFinished(space) || current_iterations.get(ship) <= 0 || !goal_exists)
 			{
 				current_iterations.put(ship, MAX_ITERATIONS);
 				
@@ -254,7 +241,7 @@ public class Project1Client extends TeamClient
 				// drawNodesConnections(space, n, n, ship.getRadius(), node_shadows); // draw all nodes
 				// drawLines(space, matrix_graph, 0, node_shadows); // draw all the lines connecting all nodes
 				// drawSolution(local_space, fast_path, ship.getRadius(), node_shadows); // draw the shortest path
-				managedShadows.put(ship.getId() + "sources", node_shadows);
+				my_shadow_manager.put(ship.getId() + "sources", node_shadows);
 				
 				// make the goals
 				Position currentPosition = ship.getPosition();
@@ -288,7 +275,7 @@ public class Project1Client extends TeamClient
 				Shadow shadow = new CircleShadow(3, getTeamColor(), newGoal);
 				ArrayList<Shadow> goal_shadow = new ArrayList<Shadow>();
 				goal_shadow.add(shadow);
-				managedShadows.put(ship.getId() + "destination", goal_shadow);
+				my_shadow_manager.put(ship.getId() + "destination", goal_shadow);
 				
 				// finally
 				actions.put(ship.getId(), newAction);
@@ -419,7 +406,8 @@ public class Project1Client extends TeamClient
 			{
 				if (output)
 					System.out.println("picking the asteroid " + closest_goal + " money: " + ((Asteroid) closest_object).getMoney());
-				goal = closest_object;
+				if(!((Asteroid) closest_object).isMoveable())
+					goal = closest_object;
 			}
 			
 			for (SpacewarObject forbidden : out_goal)
@@ -852,24 +840,6 @@ public class Project1Client extends TeamClient
 	
 	// everything below here is dealing with drawing and shadows
 	
-	// new shadow manager deletes old shadows, and prepares new shadows for draw
-	private void switchShadows()
-	{
-		oldShadows = new ArrayList<Shadow>(newShadows);
-		newShadows.clear();
-		
-		Iterator<Entry<String, ArrayList<Shadow>>> it = managedShadows.entrySet().iterator();
-		while (it.hasNext())
-		{
-			Map.Entry<String, ArrayList<Shadow>> pairs = (Map.Entry<String, ArrayList<Shadow>>) it.next();
-			
-			ArrayList<Shadow> shadows = pairs.getValue();
-			
-			for (Shadow s : shadows)
-				newShadows.add(s);
-		}
-	}
-	
 	@SuppressWarnings("unused")
 	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node> nodes, double min_radius, ArrayList<Shadow> node_shadows)
 	{
@@ -923,31 +893,75 @@ public class Project1Client extends TeamClient
 	}
 	
 	@Override
-	public ArrayList<Shadow> getNewShadows()
+	public Set<Shadow> getNewShadows()
 	{
 		if (no_draw)
 			return null;
 		
-		ArrayList<Shadow> shadows = new ArrayList<Shadow>(newShadows);
-		return shadows;
+		return my_shadow_manager.getNewShadows();
 	}
 	
 	@Override
-	public ArrayList<Shadow> getOldShadows()
+	public Set<Shadow> getOldShadows()
 	{
 		if (no_draw)
 			return null;
 		
-		if (oldShadows.size() > 0)
-		{
-			ArrayList<Shadow> shadows = new ArrayList<Shadow>(oldShadows);
-			oldShadows.clear();
-			return shadows;
-		}
-		else
-		{
-			return null;
-		}
+		return my_shadow_manager.getOldShadows();
 	}
 	
+	@Override
+	public void getMovementEnd(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
+	{
+		// TODO Auto-generated method stub
+		
+	}
+	
+	@Override
+	public Map<UUID, SpacewarPowerup> getPowerups(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	@Override
+	public Map<UUID, SpacewarPurchaseEnum> getTeamPurchases(Toroidal2DPhysics space, Set<Ship> ships, int availableMoney, int currentCostOfBase)
+	{
+
+		HashMap<UUID, SpacewarPurchaseEnum> purchases = new HashMap<UUID, SpacewarPurchaseEnum>();
+		double BASE_BUYING_DISTANCE = 400;
+
+		if (availableMoney >= currentCostOfBase) {
+			for (Ship ship : ships) {
+				ArrayList<Base> bases = space.getBases();
+				
+				// how far away is this ship to a base of my team?
+				double maxDistance = Double.MIN_VALUE;
+				for (Base base : bases) {
+					if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
+						double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
+						if (distance > maxDistance) {
+							maxDistance = distance;
+						}
+					}
+				}
+				
+				if (maxDistance > BASE_BUYING_DISTANCE) {
+					purchases.put(ship.getId(), SpacewarPurchaseEnum.BASE);
+					//System.out.println("Buying a base!!");
+					break;
+				}
+			}		
+		} 
+		
+		return purchases;
+		
+	}
+	
+	@Override
+	public void shutDown()
+	{
+		// TODO Auto-generated method stub
+		
+	}
 }

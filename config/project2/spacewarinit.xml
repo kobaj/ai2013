@@ -10,7 +10,7 @@
 	<teamColorBlue>139</teamColorBlue>
 	
 	<!-- The name that shows up in the ladder -->
-	<ladderName>Jakob Griffith And Tom Shehan</ladderName>
+	<ladderName><![CDATA[&lsaquo;&lsaquo;Jakob Griffith And Tom Shehan&rsaquo;&rsaquo;]]></ladderName>
 	
 	<!-- The number of ships in the team.  Note, if this is bigger than the maximum number of allowable ships per team, it is ignored -->
 	<numberInitialShipsInTeam>2</numberInitialShipsInTeam>
