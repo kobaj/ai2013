@@ -270,11 +270,47 @@ public class Project2Client extends TeamClient
 					local_goals.remove(ship);
 				}
 				
-				SpacewarAction newAction = new MoveAction(local_space, currentPosition, newGoal);
+				// extend the goal for higher velocity. just a quick test
+				//if(ship.getPosition().getX())
 				
-				Shadow shadow = new CircleShadow(3, getTeamColor(), newGoal);
+				
+				
+				Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
+				double dx = v.getXValue();
+				double dy = v.getYValue();
+				
+				// increment the max x multiplier until newx is outside the screen size bounds
+				int maxXmultiplier = 0 ;
+				double newX;
+				do{
+					++maxXmultiplier;
+					newX = ship.getPosition().getX() + (dx * (maxXmultiplier + 4));
+					
+				}while( newX > 0 && newX < space.getWidth());
+				
+				// increment the max y multiplier until newx is outside the screen size bounds
+				int maxYmultiplier = 0 ;
+				double newY;
+				do{
+					++maxYmultiplier;
+					newY = ship.getPosition().getY() + (dy * (maxYmultiplier + 4));
+					
+				}while( newY > 0 && newY < space.getHeight());
+				
+				int multiplier = Math.min(maxXmultiplier, Math.min(3,maxYmultiplier));
+				
+				double dx_new = dx * multiplier;
+				double dy_new = dy * multiplier;
+				Position newNewGoal = new Position(ship.getPosition().getX() + dx_new, ship.getPosition().getY() + dy_new);
+				SpacewarAction newAction = new MoveAction(local_space, currentPosition, newNewGoal);
+				
+				Shadow shadow = new CircleShadow(10, new Color(255,0,0), newNewGoal);
+				Shadow shadow2 = new CircleShadow(5, new Color(200,0,0), newGoal);
+
 				ArrayList<Shadow> goal_shadow = new ArrayList<Shadow>();
 				goal_shadow.add(shadow);
+				goal_shadow.add(shadow2);
+
 				my_shadow_manager.put(ship.getId() + "destination", goal_shadow);
 				
 				// finally
