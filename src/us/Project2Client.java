@@ -279,38 +279,50 @@ public class Project2Client extends TeamClient
 				double dx = v.getXValue();
 				double dy = v.getYValue();
 				
-				// increment the max x multiplier until newx is outside the screen size bounds
-				int maxXmultiplier = 0 ;
+				// increment the max multiplier until the new position is closer than the previous one
+				// due to toroidal space
+				int maxMultiplier = 0 ;
 				double newX;
-				do{
-					++maxXmultiplier;
-					newX = ship.getPosition().getX() + (dx * (maxXmultiplier + 4));
-					
-				}while( newX > 0 && newX < space.getWidth());
-				
-				// increment the max y multiplier until newx is outside the screen size bounds
-				int maxYmultiplier = 0 ;
 				double newY;
+				double prevX;
+				double prevY;
+				double newDistance;
+				double prevDistance;
 				do{
-					++maxYmultiplier;
-					newY = ship.getPosition().getY() + (dy * (maxYmultiplier + 4));
+					++maxMultiplier;
+					newX = ship.getPosition().getX() + (dx * (maxMultiplier + 2));
+					newY = ship.getPosition().getY() + (dy * (maxMultiplier + 2));	
 					
-				}while( newY > 0 && newY < space.getHeight());
+					prevX = ship.getPosition().getX() + (dx * (maxMultiplier));
+					prevY = ship.getPosition().getY() + (dy * (maxMultiplier));	
+					
+					newDistance = space.findShortestDistance(ship.getPosition(),new Position(newX,newY));
+					prevDistance = space.findShortestDistance(ship.getPosition(),new Position(prevX,prevY));
+					
+				}while( newX < space.getWidth() && newX > 0 && newY < space.getHeight() && newY > 0 && newDistance > prevDistance);
 				
-				int multiplier = Math.min(maxXmultiplier, Math.min(3,maxYmultiplier));
+				double dx_new = dx * maxMultiplier;
+				double dy_new = dy * maxMultiplier;
 				
-				double dx_new = dx * multiplier;
-				double dy_new = dy * multiplier;
-				Position newNewGoal = new Position(ship.getPosition().getX() + dx_new, ship.getPosition().getY() + dy_new);
-				SpacewarAction newAction = new MoveAction(local_space, currentPosition, newNewGoal);
-				
-				Shadow shadow = new CircleShadow(10, new Color(255,0,0), newNewGoal);
-				Shadow shadow2 = new CircleShadow(5, new Color(200,0,0), newGoal);
-
 				ArrayList<Shadow> goal_shadow = new ArrayList<Shadow>();
-				goal_shadow.add(shadow);
-				goal_shadow.add(shadow2);
+				SpacewarAction newAction ;
+				if(fast_path.size() < 4){
+					Position newNewGoal = new Position(ship.getPosition().getX() + dx_new, ship.getPosition().getY() + dy_new);
+					Shadow shadow = new CircleShadow(15, new Color(0,0,255), newNewGoal);
+					goal_shadow.add(shadow);
+					newAction = new MoveAction(local_space, currentPosition, newNewGoal);
 
+				}else{
+					newAction = new MoveAction(local_space, currentPosition, newGoal);
+				}
+				
+				
+				Shadow shadow2 = new CircleShadow(9, new Color(255,255,255), newGoal);
+				Shadow shadow3 = new CircleShadow(3, new Color(255,0,0), goal.getPosition());
+
+				goal_shadow.add(shadow2);
+				goal_shadow.add(shadow3);
+				
 				my_shadow_manager.put(ship.getId() + "destination", goal_shadow);
 				
 				// finally
@@ -442,8 +454,8 @@ public class Project2Client extends TeamClient
 			{
 				if (output)
 					System.out.println("picking the asteroid " + closest_goal + " money: " + ((Asteroid) closest_object).getMoney());
-				if(!((Asteroid) closest_object).isMoveable())
-					goal = closest_object;
+					if(!((Asteroid)closest_object).isMoveable())
+						goal = closest_object;
 			}
 			
 			for (SpacewarObject forbidden : out_goal)
@@ -643,7 +655,7 @@ public class Project2Client extends TeamClient
 					double next_x = lerp(0, divisors, j, n1.position.getX(), n2.position.getX());
 					double next_y = lerp(0, divisors, j, n1.position.getY(), n2.position.getY());
 					
-					if (!local_space.isLocationFree(new Position(next_x, next_y), (int) (min_distance * 2.0)))
+					if (!local_space.isLocationFree(new Position(next_x, next_y), (int) (min_distance * 2.0)) )
 					{
 						if (output)
 							System.out.println("                                                                  Collision");
