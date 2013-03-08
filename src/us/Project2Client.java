@@ -1,5 +1,6 @@
 package grif1252;
 
+
 import grif1252.Node.NodeType;
 
 import java.awt.Color;
@@ -239,8 +240,8 @@ public class Project2Client extends TeamClient
 				ArrayList<Shadow> node_shadows = new ArrayList<Shadow>();
 				// for(Node n: nodes)
 				// drawNodesConnections(space, n, n, ship.getRadius(), node_shadows); // draw all nodes
-				// drawLines(space, matrix_graph, 0, node_shadows); // draw all the lines connecting all nodes
-				// drawSolution(local_space, fast_path, ship.getRadius(), node_shadows); // draw the shortest path
+				 //drawLines(space, matrix_graph, 0, node_shadows); // draw all the lines connecting all nodes
+				 drawSolution(local_space, fast_path, ship.getRadius(), node_shadows); // draw the shortest path
 				my_shadow_manager.put(ship.getId() + "sources", node_shadows);
 				
 				// make the goals
@@ -276,6 +277,7 @@ public class Project2Client extends TeamClient
 				
 				
 				Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
+				Vector2D distance_unit = v.getUnitVector();
 				double dx = v.getXValue();
 				double dy = v.getYValue();
 				
@@ -299,7 +301,7 @@ public class Project2Client extends TeamClient
 					newDistance = space.findShortestDistance(ship.getPosition(),new Position(newX,newY));
 					prevDistance = space.findShortestDistance(ship.getPosition(),new Position(prevX,prevY));
 					
-				}while( newX < space.getWidth() && newX > 0 && newY < space.getHeight() && newY > 0 && newDistance > prevDistance);
+				}while(false && newX < space.getWidth() && newX > 0 && newY < space.getHeight() && newY > 0 && newDistance > prevDistance);
 				
 				double dx_new = dx * maxMultiplier;
 				double dy_new = dy * maxMultiplier;
@@ -316,6 +318,13 @@ public class Project2Client extends TeamClient
 					newAction = new MoveAction(local_space, currentPosition, newGoal);
 				}
 				
+				double jakobs_magic_multiplier = 2000.0 / v.getMagnitude();
+				
+				Position extended_goal = new Position(newGoal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier,
+						newGoal.getY() + distance_unit.getYValue() * jakobs_magic_multiplier);
+				newAction = new MoveAction(local_space, currentPosition, extended_goal);
+				
+				goal_shadow.add(new CircleShadow(5, new Color(240,100,0), extended_goal));
 				
 				Shadow shadow2 = new CircleShadow(9, new Color(255,255,255), newGoal);
 				Shadow shadow3 = new CircleShadow(3, new Color(255,0,0), goal.getPosition());
