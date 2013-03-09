@@ -50,8 +50,9 @@ class ApproachingCurrentPosition extends Relation{
 	public static ApproachingCurrentPosition make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space){
 
 		// set constants
-		int radius = 20;
+		int radius = 50;
 		int steps = 50;
+		int resolution = 1;
 		
 		// get velocity vector and position for A
 		Vector2D v = a.getPosition().getTranslationalVelocity();
@@ -69,9 +70,9 @@ class ApproachingCurrentPosition extends Relation{
 			}
 			
 			// increment step and future position
-			futurePosition.setX(futurePosition.getX() + v.getXValue());
-			futurePosition.setY(futurePosition.getY() + v.getYValue());
-			++i;
+			futurePosition.setX(futurePosition.getX() + (v.getXValue() * resolution));
+			futurePosition.setY(futurePosition.getY() + (v.getYValue() * resolution));
+			i += resolution;
 			
 		}
 		return null ;
@@ -104,30 +105,36 @@ class ApproachingCurrentPosition extends Relation{
 public class KnowledgeGraph{
 
 	
-	ArrayList<SpacewarObject> vertices;
-	ArrayList<Relation> edges;
+	protected ArrayList<SpacewarObject> vertices;
+	protected ArrayList<Relation> edges;
 	
 	public KnowledgeGraph(Toroidal2DPhysics space){
 		
-		ArrayList<SpacewarObject> objects = new ArrayList<SpacewarObject>();
-		objects.addAll(space.getAsteroids());
-		objects.addAll(space.getBases());
-		objects.addAll(space.getBeacons());
-		objects.addAll(space.getShips());
-		objects.addAll(space.getWeapons());
+		edges = new ArrayList<Relation>();
+		vertices = new ArrayList<SpacewarObject>();
 		
-		for(SpacewarObject a : objects){
-			for(SpacewarObject b : objects){
-				Relation r = ApproachingCurrentPosition.make(a, b, space);
-				if(r != null){
-					edges.add(r);
+		vertices.addAll(space.getAsteroids());
+		vertices.addAll(space.getBases());
+		vertices.addAll(space.getBeacons());
+		vertices.addAll(space.getShips());
+		vertices.addAll(space.getWeapons());
+		
+		for(SpacewarObject a : vertices){
+			for(SpacewarObject b : vertices){
+				if(!a.equals(b)){
+					
+					// Relate ships and asteroids where one is going towards the other
+					Relation r = ApproachingCurrentPosition.make(a, b, space);
+					if(r != null && ((a.getClass().isAssignableFrom(Asteroid.class) && b.getClass().isAssignableFrom(Ship.class)) || (b.getClass().isAssignableFrom(Asteroid.class) && a.getClass().isAssignableFrom(Ship.class)))){
+						edges.add(r);
+					}
 				}
 			}
 		}
 		
 	}
 	
-	// get the list of relations between two SpacewarObjects
+	// get the list of directed relations between two SpacewarObjects
 	public ArrayList<Relation> getRelations(SpacewarObject a,SpacewarObject b){
 		
 		ArrayList<Relation> result = new ArrayList<Relation>();
@@ -138,7 +145,21 @@ public class KnowledgeGraph{
 			}
 		}
 		
-		return edges;
+		return result;
+	}
+	
+	// get the list of relations involving a particular object
+	public ArrayList<Relation> getRelations(SpacewarObject a){
+		
+		ArrayList<Relation> result = new ArrayList<Relation>();
+		
+		for(Relation e : edges){
+			if(e.A().equals(a) || e.B().equals(a)){
+				result.add(e);
+			}
+		}
+		
+		return result;
 	}
 	
 }

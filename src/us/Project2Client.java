@@ -1,6 +1,8 @@
 package grif1252;
 
 import grif1252.Node.NodeType;
+import grif1252.KnowledgeGraph;
+
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -126,6 +128,9 @@ public class Project2Client extends TeamClient
 	@Override
 	public Map<UUID, SpacewarAction> getMovementStart(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
+		KnowledgeGraph kg = new KnowledgeGraph(space);
+
+		
 		// store necessary variables
 		Long time = System.currentTimeMillis();
 		X_RES = space.getWidth();
@@ -140,8 +145,20 @@ public class Project2Client extends TeamClient
 		for (SpacewarObject actionable : actionableObjects)
 			if (actionable instanceof Ship)
 			{
+
+				
 				Ship ship = (Ship) actionable;
 				SpacewarAction current = ship.getCurrentAction();
+				
+				ArrayList<Relation> vertices = kg.getRelations(ship);
+				System.out.println("Step:\n--------\n");
+				for(Relation r : vertices){
+				
+						System.out.println("\tthis ship will arrive eventually");
+						
+						my_shadow_manager.put(r.toString(), new CircleShadow(10, new Color(255,0,0), r.B().getPosition()));	
+						
+				}
 				
 				// work on iterations
 				if (current_iterations.get(ship) == null)
