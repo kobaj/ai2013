@@ -7,11 +7,13 @@ import spacewar2.utilities.Position;
 import spacewar2.objects.*;
 
 // A directed path from a to b with no properties
-class Relation{
+abstract class Relation{
 	
 	// A and B - the edges this relation connects
 	protected SpacewarObject a;
 	protected SpacewarObject b;
+	
+	public abstract Relation makeRelation(SpacewarObject a, SpacewarObject b);
 	
 	// constructor
 	public Relation(SpacewarObject a, SpacewarObject b){
@@ -40,6 +42,14 @@ class Relation{
 // An example of a relation with some properties
 class ApproachingCurrentPosition extends Relation{
 
+	public static ApproachingCurrentPosition makeRelation(SpacewarObject a, SpacewarObject b){
+		// if the conditions are right, return a relation between a and b with the appropriate
+		// properties by calling the constructor on a and b. otherwise return null.
+		
+		// obviously this is wrong. Would it be possible to just make the constructor so that 
+		// it checks the input and throws an exception if there is no such relation?
+		
+	}
 
 	// the number of steps before B occupies the approximate current position of A
 	protected double timeBeforeThere;
@@ -47,10 +57,11 @@ class ApproachingCurrentPosition extends Relation{
 	// the constructor
 	public ApproachingCurrentPosition(SpacewarObject a, SpacewarObject b) {
 		super(a, b);
-		
 		// compute timeBeforeThere based on position and velocity and set the local variable
 		
 	}
+
+
 	
 	
 }
