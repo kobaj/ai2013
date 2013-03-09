@@ -140,11 +140,12 @@ public class Project2Client extends TeamClient
 		for (SpacewarObject actionable : actionableObjects)
 			if (actionable instanceof Ship)
 			{
-				
+
 				Ship ship = (Ship) actionable;
 				SpacewarAction current = ship.getCurrentAction();
 				
-				KnowledgeGraph kg = new KnowledgeGraph(space, my_shadow_manager, ship);
+				KnowledgeGraph kg = new KnowledgeGraph(space,my_shadow_manager,ship);
+
 				
 				// work on iterations
 				if (current_iterations.get(ship) == null)
@@ -265,8 +266,7 @@ public class Project2Client extends TeamClient
 						if (goal != null)
 						{
 							ship_goals.put(ship, goal.getPosition().toString());
-							
-							// my_shadow_manager.put(ship.getId() + "goal_shadow", new CircleShadow(5, new Color(255, 0, 0), goal.getPosition()));
+							//my_shadow_manager.put(ship.getId() + "goal_shadow", new CircleShadow(5, new Color(255, 0, 0), goal.getPosition()));
 						}
 						
 						if (fast_path.get(1).node_type != NodeType.goal)

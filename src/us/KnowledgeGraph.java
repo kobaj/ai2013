@@ -1,6 +1,9 @@
 package grif1252;
 
+import java.awt.Color;
 import java.util.ArrayList;
+
+import spacewar2.shadows.CircleShadow;
 import spacewar2.simulator.Toroidal2DPhysics;
 import spacewar2.simulator.Toroidal2DPhysics;
 import spacewar2.utilities.Position;
@@ -15,7 +18,7 @@ class Relation{
 	protected SpacewarObject b;
 	
 	// make a relation between A and B if possible. This is the base class so it is never possible
-	public static Relation make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space){
+	public static Relation make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space,ShadowManager shadow_manager){
 		return null;
 	}
 	
@@ -43,31 +46,33 @@ class Relation{
 	
 }
 
-// An example of a relation with some properties
+// Is A approaching the current position of B ?
 class ApproachingCurrentPosition extends Relation{
 
 	// make the relation if a will approximately reach B's location in some number of steps
-	public static ApproachingCurrentPosition make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space){
+	public static ApproachingCurrentPosition make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space, ShadowManager shadow_manager){
 
 		// set constants
-		int radius = 50;
+		int radius = 10;
 		int steps = 50;
-		int resolution = 1;
-		
+		int resolution = 10;
+
 		// get velocity vector and position for A
 		Vector2D v = a.getPosition().getTranslationalVelocity();
 		Position futurePosition = a.getPosition();
-		
+		shadow_manager.put("test", new CircleShadow(2, new Color(255,0,0), a.getPosition()));
+		shadow_manager.put("testing", new CircleShadow(2, new Color(0,0,255), b.getPosition()));
+
 		// see if A will arrive at current position of B within given number  of frames
 		int i = 0;
 		while(i < steps){
 			
 			// return relation if approximate collision found at this step
 			if(space.findShortestDistance(b.getPosition(), futurePosition) < radius){
-				ApproachingCurrentPosition r = new ApproachingCurrentPosition(a,b);
-				r.steps(steps);
+				ApproachingCurrentPosition r = new ApproachingCurrentPosition(a,b,i);
 				return r;
 			}
+			
 			
 			// increment step and future position
 			futurePosition.setX(futurePosition.getX() + (v.getXValue() * resolution));
@@ -75,9 +80,8 @@ class ApproachingCurrentPosition extends Relation{
 			i += resolution;
 			
 		}
+
 		return null ;
-		
-		
 	}
 
 	// the number of steps before B occupies the approximate current position of A
@@ -91,14 +95,10 @@ class ApproachingCurrentPosition extends Relation{
 	
 	
 	// the constructor
-	public ApproachingCurrentPosition(SpacewarObject a, SpacewarObject b) {
+	public ApproachingCurrentPosition(SpacewarObject a, SpacewarObject b, int steps) {
 		super(a, b);
-		// compute timeBeforeThere based on position and velocity and set the local variable
-		
+		this.steps = steps;
 	}
-
-
-	
 	
 }
 
@@ -108,26 +108,27 @@ public class KnowledgeGraph{
 	protected ArrayList<SpacewarObject> vertices;
 	protected ArrayList<Relation> edges;
 	
-	public KnowledgeGraph(Toroidal2DPhysics space){
+	public KnowledgeGraph(Toroidal2DPhysics space, ShadowManager shadow_manager,Ship theShip){
 		
 		edges = new ArrayList<Relation>();
 		vertices = new ArrayList<SpacewarObject>();
 		
 		vertices.addAll(space.getAsteroids());
-		vertices.addAll(space.getBases());
-		vertices.addAll(space.getBeacons());
 		vertices.addAll(space.getShips());
-		vertices.addAll(space.getWeapons());
+		
 		
 		for(SpacewarObject a : vertices){
-			for(SpacewarObject b : vertices){
-				if(!a.equals(b)){
-					
-					// Relate ships and asteroids where one is going towards the other
-					Relation r = ApproachingCurrentPosition.make(a, b, space);
-					if(r != null && ((a.getClass().isAssignableFrom(Asteroid.class) && b.getClass().isAssignableFrom(Ship.class)) || (b.getClass().isAssignableFrom(Asteroid.class) && a.getClass().isAssignableFrom(Ship.class)))){
+			if(a.equals(theShip)){
+
+				for(SpacewarObject b : vertices){
+				
+					// add relations between asteroids and ships where one is headed towards
+					// the other one's current position
+					Relation r = ApproachingCurrentPosition.make(a, b, space,shadow_manager);
+					if(r != null ){
 						edges.add(r);
 					}
+					break;
 				}
 			}
 		}
@@ -148,13 +149,13 @@ public class KnowledgeGraph{
 		return result;
 	}
 	
-	// get the list of relations involving a particular object
+	// get the list of relations starting from a particular object
 	public ArrayList<Relation> getRelations(SpacewarObject a){
 		
 		ArrayList<Relation> result = new ArrayList<Relation>();
 		
 		for(Relation e : edges){
-			if(e.A().equals(a) || e.B().equals(a)){
+			if(e.A().equals(a)){
 				result.add(e);
 			}
 		}
