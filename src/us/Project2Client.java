@@ -1,8 +1,6 @@
 package grif1252;
 
 import grif1252.Node.NodeType;
-import grif1252.KnowledgeGraph;
-
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -69,7 +67,7 @@ public class Project2Client extends TeamClient
 	// to compensate for unfindable paths
 	final public static int SQUARE_PADDING = 150;
 	
-	//when calculating a multiplication vector (so we fly faster) how far out should the vector be placed relative to our goal?
+	// when calculating a multiplication vector (so we fly faster) how far out should the vector be placed relative to our goal?
 	final public static double magnitude_vector = 2000.0;
 	
 	// how many loops should we go through before recalculating astar and nodes
@@ -128,9 +126,6 @@ public class Project2Client extends TeamClient
 	@Override
 	public Map<UUID, SpacewarAction> getMovementStart(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
-		KnowledgeGraph kg = new KnowledgeGraph(space);
-
-		
 		// store necessary variables
 		Long time = System.currentTimeMillis();
 		X_RES = space.getWidth();
@@ -145,20 +140,11 @@ public class Project2Client extends TeamClient
 		for (SpacewarObject actionable : actionableObjects)
 			if (actionable instanceof Ship)
 			{
-
 				
 				Ship ship = (Ship) actionable;
 				SpacewarAction current = ship.getCurrentAction();
 				
-				ArrayList<Relation> vertices = kg.getRelations(ship);
-				System.out.println("Step:\n--------\n");
-				for(Relation r : vertices){
-				
-						System.out.println("\tthis ship will arrive eventually");
-						
-						my_shadow_manager.put(r.toString(), new CircleShadow(10, new Color(255,0,0), r.B().getPosition()));	
-						
-				}
+				KnowledgeGraph kg = new KnowledgeGraph(space, my_shadow_manager, ship);
 				
 				// work on iterations
 				if (current_iterations.get(ship) == null)
@@ -279,7 +265,8 @@ public class Project2Client extends TeamClient
 						if (goal != null)
 						{
 							ship_goals.put(ship, goal.getPosition().toString());
-							my_shadow_manager.put(ship.getId() + "goal_shadow", new CircleShadow(5, new Color(255, 0, 0), goal.getPosition()));
+							
+							// my_shadow_manager.put(ship.getId() + "goal_shadow", new CircleShadow(5, new Color(255, 0, 0), goal.getPosition()));
 						}
 						
 						if (fast_path.get(1).node_type != NodeType.goal)
@@ -291,15 +278,15 @@ public class Project2Client extends TeamClient
 					{
 						if (global_output)
 							System.out.println("********Could not find path*********");
-						newGoal = this.getClosestAsteroid(local_space, ship).getPosition();//local_space.getRandomFreeLocation(random, ship.getRadius()); // get next movement
+						newGoal = this.getClosestAsteroid(local_space, ship).getPosition();// local_space.getRandomFreeLocation(random, ship.getRadius()); // get next movement
 						
 						// remove our goa
-						//ship_goals.put(ship, newGoal.toString());
+						// ship_goals.put(ship, newGoal.toString());
 						ship_goals.remove(ship);
 						local_goals.remove(ship);
 					}
 					
-					//extend the goal for higher velocity
+					// extend the goal for higher velocity
 					Vector2D v = space.findShortestDistanceVector(ship.getPosition(), newGoal);
 					Vector2D distance_unit = v.getUnitVector();
 					
@@ -312,7 +299,7 @@ public class Project2Client extends TeamClient
 					newAction = new MoveAction(local_space, currentPosition, extended_goal);
 					
 					goal_shadow.add(new CircleShadow(5, new Color(240, 100, 0), extended_goal));
-							
+					
 					my_shadow_manager.put(ship.getId() + "destination", goal_shadow);
 					
 					// finally
@@ -352,8 +339,8 @@ public class Project2Client extends TeamClient
 		// this is our intelligent search system
 		Asteroid goal_max_asteroid = getMaxAsteroid(space);
 		ArrayList<Asteroid> goal_close_asteroids = getClosestAsteroids(space, ship, 6);
-		Base base = getMyBase(space, ship);
-		Beacon goal_close_beacon = getClosestBeacon(space, ship);
+		ArrayList<Base> bases = getMyBases(space, ship);
+		ArrayList<Beacon> beacons = space.getBeacons();
 		
 		// we want things to have lower priority depending on things
 		// like how much money we are carrying and how much energy we have left
@@ -369,33 +356,35 @@ public class Project2Client extends TeamClient
 				if (output)
 					System.out.println("Adding close astroid, distance of :" + distance);
 			}
-		if (base != null)
-		{
-			double distance = space.findShortestDistance(base.getPosition(), ship.getPosition());
-			
-			// lower the distance (aka, priority) if we have lots of money or low energy
-			distance = distance / Math.pow((ship.getMoney() / Project2Client.MONEY_RETURN), 2);
-			distance = distance * ship.getEnergy() / Project2Client.BEACON_GET;
-			
-			intelligent_select.add(distance);
-			relations.put(distance, base);
-			
-			if (output)
-				System.out.println("Adding close base, distance of :" + distance);
-		}
-		if (goal_close_beacon != null)
-		{
-			double distance = space.findShortestDistance(goal_close_beacon.getPosition(), ship.getPosition());
-			
-			// raise the distance as we get energy
-			distance = distance * ship.getEnergy() / Project2Client.BEACON_GET;
-			
-			intelligent_select.add(distance);
-			relations.put(distance, goal_close_beacon);
-			
-			if (output)
-				System.out.println("Adding close beacon, distance of :" + distance);
-		}
+		for (Base base : bases)
+			if (base != null)
+			{
+				double distance = space.findShortestDistance(base.getPosition(), ship.getPosition());
+				
+				// lower the distance (aka, priority) if we have lots of money or low energy
+				distance = distance / Math.pow((ship.getMoney() / Project2Client.MONEY_RETURN), 2);
+				distance = distance * ship.getEnergy() / Project2Client.BEACON_GET;
+				
+				intelligent_select.add(distance);
+				relations.put(distance, base);
+				
+				if (output)
+					System.out.println("Adding close base, distance of :" + distance);
+			}
+		for (Beacon goal_close_beacon : beacons)
+			if (goal_close_beacon != null)
+			{
+				double distance = space.findShortestDistance(goal_close_beacon.getPosition(), ship.getPosition());
+				
+				// raise the distance as we get energy
+				distance = distance * ship.getEnergy() / Project2Client.BEACON_GET;
+				
+				intelligent_select.add(distance);
+				relations.put(distance, goal_close_beacon);
+				
+				if (output)
+					System.out.println("Adding close beacon, distance of :" + distance);
+			}
 		if (goal_max_asteroid != null)
 		{
 			double distance = space.findShortestDistance(goal_max_asteroid.getPosition(), ship.getPosition());
@@ -445,8 +434,8 @@ public class Project2Client extends TeamClient
 			{
 				if (output)
 					System.out.println("picking the asteroid " + closest_goal + " money: " + ((Asteroid) closest_object).getMoney());
-				//if (!((Asteroid) closest_object).isMoveable())
-					goal = closest_object;
+				// if (!((Asteroid) closest_object).isMoveable())
+				goal = closest_object;
 			}
 			
 			for (SpacewarObject forbidden : out_goal)
@@ -566,9 +555,9 @@ public class Project2Client extends TeamClient
 		// remove beacons as they are actually good
 		Toroidal2DPhysics local_space = space.deepClone();
 		
-		Base my_base = getMyBase(local_space, ship);
-		if (nodes.get(0).position.equals(my_base.getPosition()))
-			local_space.removeObject(my_base);
+		ArrayList<Base> my_bases = getMyBases(local_space, ship);
+		for (int i = my_bases.size() - 1; i >= 0; i--)
+			local_space.removeObject(my_bases.get(i));
 		
 		ArrayList<Beacon> beacons = local_space.getBeacons();
 		for (int i = beacons.size() - 1; i >= 0; i--)
@@ -776,13 +765,15 @@ public class Project2Client extends TeamClient
 	
 	// methods to help find appropriot goals
 	
-	private Base getMyBase(Toroidal2DPhysics space, Ship ship)
+	private ArrayList<Base> getMyBases(Toroidal2DPhysics space, Ship ship)
 	{
+		ArrayList<Base> bases = new ArrayList<Base>();
+		
 		for (Base base : space.getBases())
 			if (base.getTeamName().equalsIgnoreCase(ship.getTeamName()))
-				return base;
+				bases.add(base);
 		
-		return null;
+		return bases;
 	}
 	
 	private ArrayList<Asteroid> getClosestAsteroids(Toroidal2DPhysics space, Ship ship, int count)
@@ -999,8 +990,9 @@ public class Project2Client extends TeamClient
 				
 			}
 			
-			if(can_buy_base.get(ship) && this.buy_a_base.get(ship))
-			{	
+			if (can_buy_base.get(ship.getId()) && this.buy_a_base.get(ship.getId()))
+			{
+				
 				System.out.println("buying a base");
 				purchases.put(ship.getId(), SpacewarPurchaseEnum.BASE);
 			}
