@@ -38,18 +38,6 @@ public class ShadowManager
 	}
 	
 	/**
-	 * Add a shadow to the manager without an ID association.
-	 * 
-	 * @param shadow
-	 *            The shadow to be added.
-	 */
-	public void put(Shadow shadow)
-	{
-		String randomid = String.valueOf(random.nextLong());
-		put(randomid, shadow);
-	}
-	
-	/**
 	 * Add a shadow to the manager with an ID association.
 	 * 
 	 * @param id
