@@ -52,13 +52,13 @@ public class Project2Client extends TeamClient
 	// eg, just because an asteroid has a size of 900 (> 700) does not mean we go after it.
 	
 	// how big should an asteroid be (money wise) so that we pick it, instead of the closest asteroid
-	final public static double ASTEROID_SIZE = 1;
+	final public static double ASTEROID_SIZE = 200;
 	
 	// how much money until a ship searches for a base
-	final public static double MONEY_RETURN = 350;
+	final public static double MONEY_RETURN = 250;
 	
 	// how low on energy should we be before searching for a beacon
-	final public static double BEACON_GET = 1300;
+	final public static double BEACON_GET = 1500;
 	
 	// when calculating nodes randomly, how many should we use (much like resolution)
 	public static int MAX_RANDOM_NODES = 10;
@@ -274,7 +274,7 @@ public class Project2Client extends TeamClient
 					{
 						if (global_output)
 							System.out.println("********Could not find path*********");
-						newGoal = this.getMaxAsteroid(local_space).getPosition();//local_space.getRandomFreeLocation(random, ship.getRadius()); // get next movement
+						newGoal = this.getClosestAsteroid(local_space, ship).getPosition();//local_space.getRandomFreeLocation(random, ship.getRadius()); // get next movement
 						
 						// remove our goa
 						//ship_goals.put(ship, newGoal.toString());
@@ -975,12 +975,18 @@ public class Project2Client extends TeamClient
 				}
 				
 				if (maxDistance > BASE_BUYING_DISTANCE)
+				{
+					System.out.println("Can buy a base");
 					can_buy_base.put(ship.getId(), true);
+				}
 				
 			}
 			
 			if(can_buy_base.get(ship) && this.buy_a_base.get(ship))
+			{	
+				System.out.println("buying a base");
 				purchases.put(ship.getId(), SpacewarPurchaseEnum.BASE);
+			}
 		}
 		
 		return purchases;
