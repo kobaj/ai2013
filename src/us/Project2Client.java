@@ -128,8 +128,7 @@ public class Project2Client extends TeamClient
 	@Override
 	public Map<UUID, SpacewarAction> getMovementStart(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
-		KnowledgeGraph kg = new KnowledgeGraph(space);
-
+		
 		
 		// store necessary variables
 		Long time = System.currentTimeMillis();
@@ -146,19 +145,11 @@ public class Project2Client extends TeamClient
 			if (actionable instanceof Ship)
 			{
 
-				
 				Ship ship = (Ship) actionable;
 				SpacewarAction current = ship.getCurrentAction();
 				
-				ArrayList<Relation> vertices = kg.getRelations(ship);
-				System.out.println("Step:\n--------\n");
-				for(Relation r : vertices){
-				
-						System.out.println("\tthis ship will arrive eventually");
-						
-						my_shadow_manager.put(r.toString(), new CircleShadow(10, new Color(255,0,0), r.B().getPosition()));	
-						
-				}
+				KnowledgeGraph kg = new KnowledgeGraph(space,my_shadow_manager,ship);
+
 				
 				// work on iterations
 				if (current_iterations.get(ship) == null)
@@ -279,7 +270,7 @@ public class Project2Client extends TeamClient
 						if (goal != null)
 						{
 							ship_goals.put(ship, goal.getPosition().toString());
-							my_shadow_manager.put(ship.getId() + "goal_shadow", new CircleShadow(5, new Color(255, 0, 0), goal.getPosition()));
+							//my_shadow_manager.put(ship.getId() + "goal_shadow", new CircleShadow(5, new Color(255, 0, 0), goal.getPosition()));
 						}
 						
 						if (fast_path.get(1).node_type != NodeType.goal)
