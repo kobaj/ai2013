@@ -148,8 +148,15 @@ public class Project2Client extends TeamClient
 				Ship ship = (Ship) actionable;
 				SpacewarAction current = ship.getCurrentAction();
 				
+				
 				KnowledgeGraph kg = new KnowledgeGraph(space,my_shadow_manager,ship);
+				ArrayList<Relation> relations = kg.getRelations(ship);
+				for(Relation r : relations){
+					my_shadow_manager.put(r.A().getId().toString(), new CircleShadow(2, new Color(255,0,0), r.A().getPosition()));
+					my_shadow_manager.put(r.B().getId().toString(), new CircleShadow(2, new Color(0,0,255), r.B().getPosition()));
 
+					
+				}
 				
 				// work on iterations
 				if (current_iterations.get(ship) == null)

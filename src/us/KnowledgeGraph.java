@@ -54,19 +54,16 @@ class ApproachingCurrentPosition extends Relation{
 
 		// set constants
 		int radius = 10;
-		int steps = 50;
-		int resolution = 10;
+		int steps = 20;
+		int resolution = 2;
 
 		// get velocity vector and position for A
 		Vector2D v = a.getPosition().getTranslationalVelocity();
-		Position futurePosition = a.getPosition();
-		shadow_manager.put("test", new CircleShadow(2, new Color(255,0,0), a.getPosition()));
-		shadow_manager.put("testing", new CircleShadow(2, new Color(0,0,255), b.getPosition()));
+		Position futurePosition = a.getPosition().deepCopy();
 
 		// see if A will arrive at current position of B within given number  of frames
 		int i = 0;
 		while(i < steps){
-			
 			// return relation if approximate collision found at this step
 			if(space.findShortestDistance(b.getPosition(), futurePosition) < radius){
 				ApproachingCurrentPosition r = new ApproachingCurrentPosition(a,b,i);
@@ -118,17 +115,14 @@ public class KnowledgeGraph{
 		
 		
 		for(SpacewarObject a : vertices){
-			if(a.equals(theShip)){
-
-				for(SpacewarObject b : vertices){
-				
+			for(SpacewarObject b : vertices){
+				if(a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Asteroid.class)){
 					// add relations between asteroids and ships where one is headed towards
 					// the other one's current position
 					Relation r = ApproachingCurrentPosition.make(a, b, space,shadow_manager);
 					if(r != null ){
 						edges.add(r);
 					}
-					break;
 				}
 			}
 		}
